@@ -19,6 +19,63 @@
             display: none;
         }
 
+        /* Configuración de variables CSS para el Motor de Skins */
+        :root {
+            --bg-main: #f3f4f6; /* gray-100 */
+            --bg-card: #ffffff;
+            --text-main: #1f2937; /* gray-800 */
+            --text-muted: #9ca3af; /* gray-400 */
+            --border: #e5e7eb; /* gray-200 */
+            --primary: #2563eb; /* blue-600 */
+            --primary-hover: #1d4ed8;
+            --accent: #059669; /* emerald-600 */
+            --accent-hover: #047857;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        [data-theme="cyberpunk"] {
+            --bg-main: #0b031e;
+            --bg-card: #160a2b;
+            --text-main: #f3f4f6;
+            --text-muted: #6b7280;
+            --border: #3b0764; /* purple-950 */
+            --primary: #ec4899; /* pink-500 */
+            --primary-hover: #db2777;
+            --accent: #06b6d4; /* cian-500 */
+            --accent-hover: #0891b2;
+            --shadow: 0 0 15px rgba(236,72,153,0.4);
+        }
+        [data-theme="emerald"] {
+            --bg-main: #f0fdf4; /* green-50 */
+            --bg-card: #ffffff;
+            --text-main: #064e3b; /* green-900 */
+            --text-muted: #86efac; /* green-300 */
+            --border: #bbf7d0; /* green-200 */
+            --primary: #047857; /* emerald-700 */
+            --primary-hover: #065f46;
+            --accent: #b45309; /* amber-700 */
+            --accent-hover: #92400e;
+            --shadow: 0 4px 10px rgba(4,120,87,0.15);
+        }
+        [data-theme="sunset"] {
+            --bg-main: #fdf6f0;
+            --bg-card: #ffffff;
+            --text-main: #7c2d12; /* orange-950 */
+            --text-muted: #fdba74; /* orange-300 */
+            --border: #ffedd5; /* orange-100 */
+            --primary: #ea580c; /* orange-600 */
+            --primary-hover: #c2410c;
+            --accent: #991b1b; /* red-800 */
+            --accent-hover: #7f1d1d;
+            --shadow: 0 4px 10px rgba(234,88,12,0.15);
+        }
+
+        /* Aplicación de las variables al body */
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+
         /* Animación de destello y escala para nuevas extracciones */
         @keyframes glow-flash {
             0% {
@@ -53,10 +110,22 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 h-[100dvh] flex flex-col relative overflow-hidden select-none">
+<body class="h-[100dvh] flex flex-col relative overflow-hidden select-none" data-theme="classic">
 
     <!-- Canvas para animación de celebración apoteósica -->
     <canvas id="confetti-canvas"></canvas>
+
+    <!-- SISTEMA DE DIÁLOGO FLOTANTE PERSONALIZADO (Cero alertas del navegador) -->
+    <div id="custom-dialog-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 hidden">
+        <div class="rounded-xl shadow-xl w-full max-w-xs p-5 space-y-4 text-center border transition-all duration-300" style="background-color: var(--bg-card); border-color: var(--border);">
+            <h3 id="dialog-title" class="text-sm font-bold uppercase tracking-wider">Título</h3>
+            <p id="dialog-message" class="text-xs opacity-80 leading-relaxed">Mensaje descriptivo</p>
+            <div class="flex space-x-2 pt-2">
+                <button id="dialog-btn-no" class="hidden w-1/2 bg-gray-200 hover:bg-gray-300 py-2 rounded-lg font-semibold text-xs text-gray-700 transition">Cancelar</button>
+                <button id="dialog-btn-yes" class="w-full text-white py-2 rounded-lg font-semibold text-xs transition" style="background-color: var(--primary);">Aceptar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Overlay de victoria apoteósica coordinada -->
     <div id="celebration-overlay" class="fixed inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center text-center p-6 hidden">
@@ -68,7 +137,7 @@
     </div>
 
     <!-- Encabezado de la Aplicación -->
-    <header class="bg-blue-600 text-white p-3 shadow-md text-center z-10 flex justify-between items-center flex-shrink-0">
+    <header class="text-white p-3 shadow-md text-center z-10 flex justify-between items-center flex-shrink-0" style="background-color: var(--primary);">
         <div class="w-8"></div>
         <div class="text-center cursor-pointer" onclick="handleTitleTap()">
             <h1 class="text-2xl font-bold tracking-wide select-none">Bingo Realtime</h1>
@@ -80,16 +149,27 @@
         </button>
     </header>
 
-    <!-- Contenedor Principal (Contenido estrictamente escalado) -->
+    <!-- Contenedor Principal -->
     <main class="flex-grow p-2.5 max-w-md mx-auto w-full flex flex-col justify-between z-10 overflow-hidden">
         
-        <!-- SECCIÓN 1: PANTALLA DE INICIO (Administrador oculto tras 5 toques en el título) -->
+        <!-- SECCIÓN 1: PANTALLA DE INICIO -->
         <div id="view-welcome" class="space-y-4 my-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md text-center space-y-4">
+            <!-- Selector de Skins en la pantalla de bienvenida -->
+            <div class="p-3 rounded-xl shadow-md border text-center space-y-2 flex flex-col items-center" style="background-color: var(--bg-card); border-color: var(--border);">
+                <span class="text-[9px] font-bold opacity-60 uppercase tracking-widest">Seleccionar Tema (Skin)</span>
+                <div class="flex space-x-1.5">
+                    <button onclick="applySkin('classic')" class="w-5 h-5 rounded-full border bg-blue-600" title="Clásico"></button>
+                    <button onclick="applySkin('cyberpunk')" class="w-5 h-5 rounded-full border bg-pink-500" title="Cyberpunk"></button>
+                    <button onclick="applySkin('emerald')" class="w-5 h-5 rounded-full border bg-emerald-700" title="Esmeralda"></button>
+                    <button onclick="applySkin('sunset')" class="w-5 h-5 rounded-full border bg-orange-600" title="Sunset"></button>
+                </div>
+            </div>
+
+            <div class="p-6 rounded-xl shadow-md text-center space-y-4" style="background-color: var(--bg-card); border-color: var(--border);">
                 <h2 class="text-lg font-bold">Bienvenido al Bingo</h2>
-                <p class="text-xs text-gray-500">Ingresa como jugador para unirte a una partida en curso o escanea un código QR.</p>
+                <p class="text-xs opacity-60">Ingresa como jugador para unirse a una partida en curso o escanea un código QR.</p>
                 <div class="grid grid-cols-1 gap-3">
-                    <button onclick="switchView('view-player-join')" class="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-bold transition">
+                    <button onclick="switchView('view-player-join')" class="hover:bg-opacity-90 text-white py-3 px-4 rounded-lg font-bold transition text-sm" style="background-color: var(--accent);">
                         Unirse como Jugador
                     </button>
                 </div>
@@ -98,57 +178,57 @@
 
         <!-- SECCIÓN 1.5: REGISTRO / LOGIN DE ADMINISTRADOR (CONECTADO A SUPABASE) -->
         <div id="view-admin-auth" class="hidden space-y-3 my-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
-                <h2 id="auth-title" class="text-lg font-bold text-blue-600 text-center">Acceso Administrador</h2>
-                <p id="auth-desc" class="text-xs text-gray-500 text-center">Inicia sesión o crea tu cuenta de administrador</p>
+            <div class="p-6 rounded-xl shadow-md space-y-4" style="background-color: var(--bg-card); border-color: var(--border);">
+                <h2 id="auth-title" class="text-lg font-bold text-center" style="color: var(--primary);">Acceso Administrador</h2>
+                <p id="auth-desc" class="text-xs opacity-60 text-center">Inicia sesión o crea tu cuenta de administrador</p>
                 
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-semibold mb-1">Usuario</label>
-                        <input type="text" id="auth-username" class="w-full border rounded-lg p-2 bg-gray-50">
+                        <input type="text" id="auth-username" class="w-full border rounded-lg p-2 bg-gray-50 text-black">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">Contraseña</label>
-                        <input type="password" id="auth-password" class="w-full border rounded-lg p-2 bg-gray-50">
+                        <input type="password" id="auth-password" class="w-full border rounded-lg p-2 bg-gray-50 text-black">
                     </div>
-                    <div id="admin-info-fields" class="hidden space-y-3 border-t pt-3">
+                    <div id="admin-info-fields" class="hidden space-y-3 border-t pt-3" style="border-color: var(--border);">
                         <div>
                             <label class="block text-xs font-semibold mb-1">Nombre Completo</label>
-                            <input type="text" id="auth-fullname" class="w-full border rounded-lg p-2 bg-gray-50" placeholder="Ej: Juan Pérez">
+                            <input type="text" id="auth-fullname" class="w-full border rounded-lg p-2 bg-gray-50 text-black" placeholder="Ej: Juan Pérez">
                         </div>
                     </div>
                 </div>
 
                 <div class="flex space-x-2 pt-1">
-                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
-                    <button onclick="submitAdminAuth()" id="btn-auth-submit" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm transition">Ingresar</button>
+                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition text-gray-700">Atrás</button>
+                    <button onclick="submitAdminAuth()" id="btn-auth-submit" class="w-1/2 text-white py-2 rounded-lg font-semibold text-sm transition" style="background-color: var(--primary);">Ingresar</button>
                 </div>
                 
                 <div class="text-center">
-                    <button id="btn-auth-toggle" onclick="toggleAuthMode()" class="text-[11px] text-blue-500 underline">¿No tienes cuenta? Regístrate aquí</button>
+                    <button id="btn-auth-toggle" onclick="toggleAuthMode()" class="text-[11px] underline" style="color: var(--primary);">¿No tienes cuenta? Regístrate aquí</button>
                 </div>
             </div>
         </div>
 
         <!-- SECCIÓN 1.8: DASHBOARD DEL ADMINISTRADOR (TABLA VISUAL DE SESIONES CON FLECHAS DE SCROLL) -->
         <div id="view-admin-dashboard" class="hidden space-y-3 flex flex-col h-full overflow-hidden">
-            <div class="bg-white p-3 rounded-xl shadow-md flex-shrink-0 flex justify-between items-center">
+            <div class="p-3 rounded-xl shadow-md flex-shrink-0 flex justify-between items-center" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div>
-                    <h2 class="text-md font-bold text-blue-600">Panel de Salas</h2>
-                    <p class="text-[10px] text-gray-400 font-medium">Historial y control de sesiones activas</p>
+                    <h2 class="text-md font-bold" style="color: var(--primary);">Panel de Salas</h2>
+                    <p class="text-[10px] opacity-60 font-medium">Historial y control de sesiones activas</p>
                 </div>
-                <button onclick="switchView('view-admin-setup')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition">
+                <button onclick="switchView('view-admin-setup')" class="text-white font-bold py-2 px-3 rounded-lg text-xs transition" style="background-color: var(--primary);">
                     + Crear Sala
                 </button>
             </div>
 
-            <!-- Tabla responsiva -->
-            <div class="relative flex-grow min-h-0 flex flex-col bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+            <!-- Tabla responsiva sin barras de scroll, controlada por flechas laterales -->
+            <div class="relative flex-grow min-h-0 flex flex-col rounded-xl shadow border overflow-hidden" style="background-color: var(--bg-card); border-color: var(--border);">
                 <!-- Flechas simuladoras de scroll vertical -->
-                <button onclick="scrollContainer('admin-rooms-table-wrap', 'up', 120)" class="absolute top-10 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1 z-20 hover:bg-opacity-100 shadow transition">
+                <button onclick="scrollContainer('admin-rooms-table-wrap', 'up', 120)" class="absolute top-10 right-2 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                 </button>
-                <button onclick="scrollContainer('admin-rooms-table-wrap', 'down', 120)" class="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1 z-20 hover:bg-opacity-100 shadow transition">
+                <button onclick="scrollContainer('admin-rooms-table-wrap', 'down', 120)" class="absolute bottom-2 right-2 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
 
@@ -173,34 +253,34 @@
 
         <!-- SECCIÓN 2: CONFIGURACIÓN DEL ADMINISTRADOR -->
         <div id="view-admin-setup" class="hidden space-y-3 my-auto">
-            <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
-                <h2 class="text-lg font-bold text-blue-600">Configurar Nuevo Bingo</h2>
+            <div class="p-5 rounded-xl shadow-md space-y-3" style="background-color: var(--bg-card); border-color: var(--border);">
+                <h2 class="text-lg font-bold" style="color: var(--primary);">Configurar Nuevo Bingo</h2>
                 
                 <div>
                     <label class="block text-xs font-semibold mb-1">Nombre de la Sala</label>
-                    <input type="text" id="admin-session-name" placeholder="Ej: Bingo Familiar" class="w-full border rounded-lg p-2 bg-gray-50 font-semibold text-sm">
+                    <input type="text" id="admin-session-name" placeholder="Ej: Bingo Familiar" class="w-full border rounded-lg p-2 bg-gray-50 font-semibold text-sm text-black">
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded-lg border">
+                <div class="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded-lg border" style="border-color: var(--border);">
                     <div>
                         <label class="block text-[10px] font-bold text-gray-500 mb-1">Filas</label>
-                        <input type="number" id="admin-rows" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm">
+                        <input type="number" id="admin-rows" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm text-black">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-gray-500 mb-1">Columnas</label>
-                        <input type="number" id="admin-cols" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm">
+                        <input type="number" id="admin-cols" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm text-black">
                     </div>
                 </div>
 
                 <!-- OPCIÓN DE PARTICIPACIÓN DEL ADMINISTRADOR -->
-                <div class="flex items-center justify-between bg-blue-50 p-2 rounded-lg border border-blue-200 text-xs">
-                    <span class="font-bold text-blue-800">Quiero jugar en esta partida</span>
-                    <input type="checkbox" id="admin-wants-to-play" checked class="w-4 h-4 text-blue-600 rounded bg-white border-blue-300">
+                <div class="flex items-center justify-between p-2 rounded-lg border text-xs" style="background-color: var(--bg-main); border-color: var(--border);">
+                    <span class="font-bold">Quiero jugar en esta partida</span>
+                    <input type="checkbox" id="admin-wants-to-play" checked class="w-4 h-4 rounded bg-white" style="color: var(--primary);">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold mb-1">Tipo de Bingo</label>
-                    <select id="admin-game-type" onchange="toggleConfigFields()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50">
+                    <select id="admin-game-type" onchange="toggleConfigFields()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-black">
                         <option value="numeros">Números</option>
                         <option value="palabras">Palabras (Temas)</option>
                     </select>
@@ -210,51 +290,51 @@
                 <div id="config-numbers" class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[10px] font-semibold mb-1">Mínimo</label>
-                        <input type="number" id="num-min" value="1" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center">
+                        <input type="number" id="num-min" value="1" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center text-black">
                     </div>
                     <div>
                         <label class="block text-[10px] font-semibold mb-1">Máximo</label>
-                        <input type="number" id="num-max" value="75" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center">
+                        <input type="number" id="num-max" value="75" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center text-black">
                     </div>
                 </div>
 
                 <!-- Campos para Palabras -->
                 <div id="config-words" class="hidden space-y-1">
                     <label class="block text-xs font-semibold mb-1">Seleccionar Tema</label>
-                    <select id="word-preset" onchange="loadPresetWords()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50">
+                    <select id="word-preset" onchange="loadPresetWords()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-black">
                         <option value="paises">Países</option>
                         <option value="animales">Animales</option>
                         <option value="cosas">Cosas Comunes</option>
                         <option value="custom">Personalizado (Escribir abajo)</option>
                     </select>
-                    <textarea id="custom-words-list" placeholder="Palabras separadas por comas..." class="w-full border rounded-lg p-1.5 text-xs bg-gray-50 h-16"></textarea>
+                    <textarea id="custom-words-list" placeholder="Palabras separadas por comas..." class="w-full border rounded-lg p-1.5 text-xs bg-gray-50 h-16 text-black"></textarea>
                 </div>
 
                 <div class="flex space-x-2 pt-1">
-                    <button onclick="switchView('view-admin-dashboard')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
-                    <button onclick="createGameSession()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm transition">Crear Sala</button>
+                    <button onclick="switchView('view-admin-dashboard')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition text-gray-700">Atrás</button>
+                    <button onclick="createGameSession()" class="w-1/2 text-white py-2 rounded-lg font-semibold text-sm transition" style="background-color: var(--primary);">Crear Sala</button>
                 </div>
             </div>
         </div>
 
         <!-- SECCIÓN 3: LOBBY DE ESPERA DEL ADMINISTRADOR (CON QR E INVITACIÓN) -->
         <div id="view-admin-lobby" class="hidden space-y-3 flex flex-col h-full overflow-hidden">
-            <div class="bg-white p-4 rounded-xl shadow-md text-center space-y-3 flex-shrink-0">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Sala Creada con Éxito</h2>
+            <div class="p-4 rounded-xl shadow text-center space-y-3 flex-shrink-0" style="background-color: var(--bg-card); border-color: var(--border);">
+                <h2 class="text-xs font-bold uppercase tracking-widest opacity-60">Sala Creada con Éxito</h2>
                 
-                <div class="bg-blue-50 py-2.5 rounded-lg border border-blue-200">
-                    <p class="text-[10px] text-blue-500 uppercase tracking-wider font-semibold">Código para Ingresar</p>
+                <div class="py-2.5 rounded-lg border text-xs" style="background-color: var(--bg-main); border-color: var(--border);">
+                    <p class="text-[10px] uppercase tracking-wider font-semibold" style="color: var(--primary);">Código para Ingresar</p>
                     <div class="flex items-center justify-center space-x-2 mt-1">
-                        <p id="lobby-code-display" class="text-3xl font-extrabold text-blue-600 tracking-wider">- - - -</p>
-                        <button onclick="copyInviteLink()" class="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition" title="Copiar Enlace">
+                        <p id="lobby-code-display" class="text-3xl font-extrabold tracking-wider" style="color: var(--primary);">- - - -</p>
+                        <button onclick="copyInviteLink()" class="p-1.5 rounded-lg transition" style="background-color: var(--bg-main); color: var(--primary);" title="Copiar Enlace">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
                         </button>
                     </div>
                 </div>
 
                 <!-- QR Autogenerado -->
-                <div class="bg-gray-50 p-2 rounded-lg border flex flex-col items-center">
-                    <p class="text-[9px] text-gray-400 uppercase font-bold mb-1.5">Escanea para unirte directo</p>
+                <div class="p-2 rounded-lg border flex flex-col items-center" style="background-color: var(--bg-main); border-color: var(--border);">
+                    <p class="text-[9px] uppercase font-bold mb-1.5 opacity-60">Escanea para unirte directo</p>
                     <img id="lobby-qr-code" src="" alt="Código QR de Acceso" class="w-24 h-24 border p-1 bg-white rounded">
                 </div>
 
@@ -266,23 +346,23 @@
             </div>
 
             <!-- Listado de jugadores -->
-            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0">
-                <h3 class="font-bold text-xs text-left mb-2 text-gray-500 flex-shrink-0">Participantes Conectados (<span id="player-count">0</span>):</h3>
+            <div class="p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
+                <h3 class="font-bold text-xs text-left mb-2 opacity-60 flex-shrink-0">Participantes Conectados (<span id="player-count">0</span>):</h3>
                 <div class="flex-grow overflow-y-auto min-h-0 relative">
                     <!-- Flechas de navegación para listado del lobby -->
-                    <button onclick="scrollContainer('player-list', 'up', 60)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <button onclick="scrollContainer('player-list', 'up', 60)" class="absolute top-1 right-1 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                     </button>
-                    <button onclick="scrollContainer('player-list', 'down', 60)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <button onclick="scrollContainer('player-list', 'down', 60)" class="absolute bottom-1 right-1 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
-                    <ul id="player-list" class="divide-y text-left bg-gray-50 rounded-lg p-2 text-xs h-full overflow-y-auto">
+                    <ul id="player-list" class="divide-y text-left bg-gray-50 rounded-lg p-2 text-xs h-full overflow-y-auto text-black">
                         <li class="text-gray-500 text-center py-2">Esperando participantes...</li>
                     </ul>
                 </div>
                 <div class="flex space-x-2 mt-2 flex-shrink-0">
                     <button onclick="loadAdminDashboard()" class="w-1/3 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-lg text-xs font-bold transition">Volver al Panel</button>
-                    <button onclick="startGameSession()" class="w-2/3 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition">Iniciar Partida</button>
+                    <button onclick="startGameSession()" class="w-2/3 text-white py-2.5 rounded-lg text-xs font-bold transition" style="background-color: var(--primary);">Iniciar Partida</button>
                 </div>
             </div>
         </div>
@@ -290,20 +370,25 @@
         <!-- SECCIÓN 4: PANTALLA DIVIDIDA DEL ADMINISTRADOR (EN JUEGO) -->
         <div id="view-admin-play" class="hidden flex flex-col h-full space-y-2.5 overflow-hidden">
             <!-- TARJETA SUPERIOR: Extracción -->
-            <div class="bg-white p-3 rounded-xl shadow border flex-shrink-0 space-y-2">
-                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Último elemento llamado</div>
+            <div class="p-3 rounded-xl shadow border flex-shrink-0 space-y-2" style="background-color: var(--bg-card); border-color: var(--border);">
+                <div class="text-[10px] font-bold uppercase tracking-widest text-center opacity-60">Último elemento llamado</div>
                 
-                <div id="current-called-display" class="text-4xl font-black text-blue-600 text-center">--</div>
+                <div id="current-called-display" class="text-4xl font-black text-center" style="color: var(--primary);">--</div>
                 
                 <!-- Panel de Control Automático/Manual -->
-                <div class="bg-gray-50 p-2 rounded-lg border text-[11px] space-y-1.5">
+                <div class="bg-gray-50 p-2 rounded-lg border text-[11px] space-y-1.5 text-black">
                     <div class="flex items-center justify-between">
                         <span class="font-bold text-gray-600">Extracción Automática</span>
                         <input type="checkbox" id="admin-auto-toggle" onchange="toggleAutoMode()" class="w-4 h-4 text-blue-600 rounded bg-gray-100 border-gray-300">
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-gray-500">Intervalo (segundos)</span>
-                        <input type="number" id="admin-auto-interval" value="15" min="5" max="60" class="w-14 border rounded p-0.5 text-center bg-white font-bold text-xs">
+                        <input type="number" id="admin-auto-interval" value="15" min="5" max="60" class="w-14 border rounded p-0.5 text-center bg-white font-bold text-xs text-black">
+                    </div>
+                    <!-- Activar lectura de voz automatizada -->
+                    <div class="flex items-center justify-between border-t pt-1.5 mt-1">
+                        <span class="font-bold text-gray-600">Cantar números en voz alta</span>
+                        <input type="checkbox" id="admin-tts-toggle" onchange="toggleTtsCalling()" class="w-4 h-4 rounded bg-gray-100 border-gray-300">
                     </div>
                     <div id="admin-countdown-container" class="hidden text-center pt-1 border-t text-blue-600 font-bold animate-pulse">
                         Siguiente extracción en: <span id="countdown-display" class="text-xs">15</span> s
@@ -312,25 +397,25 @@
 
                 <div class="flex space-x-2">
                     <button id="btn-verify-winner" onclick="handleManualVerification()" class="hidden w-1/3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg text-xs transition">Verificar Reclamo</button>
-                    <button onclick="drawNextElement()" id="btn-draw" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-md shadow transition w-full">
+                    <button onclick="drawNextElement()" id="btn-draw" class="text-white py-2 rounded-lg font-bold text-md shadow transition w-full" style="background-color: var(--primary);">
                         Llamar Siguiente
                     </button>
                 </div>
             </div>
             
             <!-- TARJETA INFERIOR: Pestañas -->
-            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0">
-                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0">
+            <div class="p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
+                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0" style="border-color: var(--border);">
                     <button id="tab-admin-board" onclick="switchAdminTab('board')" class="w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600">TABLERO GENERAL</button>
                     <button id="tab-admin-card" onclick="switchAdminTab('card')" class="w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400">MI CARTÓN (JUGAR)</button>
                 </div>
                 
                 <div class="flex-grow overflow-y-auto min-h-0 relative">
                     <!-- Flechas de navegación para tablero del admin -->
-                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'up', 100)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'up', 100)" class="absolute top-1 right-1 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                     </button>
-                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'down', 100)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'down', 100)" class="absolute bottom-1 right-1 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
 
@@ -338,8 +423,8 @@
                         <!-- Sub-vista A: Tablero General -->
                         <div id="admin-tab-board-view" class="space-y-3">
                             <!-- MONITOREO DE PROGRESO DE JUGADORES -->
-                            <div class="bg-blue-50 p-2 rounded-lg border border-blue-200">
-                                <h4 class="text-[9px] font-bold text-blue-800 uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
+                            <div class="p-2 rounded-lg border text-black" style="background-color: var(--bg-main); border-color: var(--border);">
+                                <h4 class="text-[9px] font-bold uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
                                 <div id="admin-progress-list" class="space-y-1 text-[11px]">
                                     <span class="text-gray-400 italic">Esperando actividad...</span>
                                 </div>
@@ -374,14 +459,14 @@
                 <h2 class="text-lg font-bold text-green-600">Unirse al Juego</h2>
                 <div>
                     <label class="block text-sm font-medium mb-1">Código de la Sala</label>
-                    <input type="text" id="join-room-code" placeholder="Ej: ABCD" class="w-full border rounded-lg p-2 bg-gray-50 uppercase tracking-widest text-center text-lg font-bold">
+                    <input type="text" id="join-room-code" placeholder="Ej: ABCD" class="w-full border rounded-lg p-2 bg-gray-50 uppercase tracking-widest text-center text-lg font-bold text-black">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Tu Nombre o Apodo</label>
-                    <input type="text" id="join-player-name" placeholder="Ej: Carlos" class="w-full border rounded-lg p-2 bg-gray-50">
+                    <input type="text" id="join-player-name" placeholder="Ej: Carlos" class="w-full border rounded-lg p-2 bg-gray-50 text-black">
                 </div>
                 <div class="flex space-x-2 pt-2">
-                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
+                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition text-gray-700">Atrás</button>
                     <button onclick="joinGame()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold text-sm transition">Ingresar</button>
                 </div>
             </div>
@@ -389,12 +474,12 @@
 
         <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY + MINIJUEGO BINGO BIRD) -->
         <div id="view-player-lobby" class="hidden space-y-3 flex flex-col h-full overflow-hidden justify-between">
-            <div class="bg-white p-3 rounded-xl shadow text-center space-y-2 flex-shrink-0">
+            <div class="p-3 rounded-xl shadow text-center space-y-2 flex-shrink-0" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="animate-bounce inline-block p-2.5 bg-green-100 rounded-full text-green-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <h2 class="text-md font-bold text-gray-700">¡Conectado! Esperando inicio...</h2>
-                <div class="text-[10px] text-gray-400 flex justify-center space-x-2 border-t pt-1.5">
+                <h2 class="text-md font-bold text-gray-700 font-sans">¡Conectado! Esperando inicio...</h2>
+                <div class="text-[10px] text-gray-400 flex justify-center space-x-2 border-t pt-1.5" style="border-color: var(--border);">
                     <span>Sala: <strong id="player-lobby-room" class="font-bold text-blue-600"></strong></span>
                     <span>•</span>
                     <span>Jugador: <strong id="player-lobby-name" class="font-bold text-green-600"></strong></span>
@@ -402,17 +487,17 @@
             </div>
 
             <!-- Contenedor del minijuego para matar el aburrimiento -->
-            <div class="bg-white p-3 rounded-xl shadow border flex-grow flex flex-col items-center justify-center space-y-2 min-h-0 overflow-hidden">
+            <div class="p-3 rounded-xl shadow border flex-grow flex flex-col items-center justify-center space-y-2 min-h-0 overflow-hidden" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="text-center">
-                    <h3 class="text-xs font-black text-blue-600 uppercase tracking-wider">🎮 Minijuego: Bingo Bird</h3>
-                    <p class="text-[9px] text-gray-400">¡Toca el recuadro gris para saltar y esquivar!</p>
+                    <h3 class="text-xs font-black uppercase tracking-wider" style="color: var(--primary);">🎮 Minijuego: Bingo Bird</h3>
+                    <p class="text-[9px] opacity-60">¡Toca el recuadro gris para saltar y esquivar!</p>
                 </div>
                 
                 <!-- Lienzo del juego adaptable a la ventana móvil -->
-                <canvas id="lobby-game-canvas" class="border-2 border-gray-300 rounded bg-gray-50 cursor-pointer w-full max-w-[280px] h-32"></canvas>
+                <canvas id="lobby-game-canvas" class="border-2 rounded bg-gray-50 cursor-pointer w-full max-w-[280px] h-32" style="border-color: var(--border);"></canvas>
                 
-                <div class="flex items-center justify-between w-full max-w-[280px] text-[10px] font-bold text-gray-500">
-                    <span>Puntos: <strong id="game-score-display" class="text-blue-600">0</strong></span>
+                <div class="flex items-center justify-between w-full max-w-[280px] text-[10px] font-bold opacity-75">
+                    <span>Puntos: <strong id="game-score-display" style="color: var(--primary);">0</strong></span>
                     <button onclick="resetLobbyGame()" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px]">Reiniciar juego</button>
                 </div>
             </div>
@@ -427,22 +512,22 @@
             </div>
 
             <!-- Panel Superior: Último elemento llamado -->
-            <div id="player-called-box" class="bg-white p-2.5 rounded-xl shadow border flex-shrink-0 space-y-1">
+            <div id="player-called-box" class="p-2.5 rounded-xl shadow border flex-shrink-0 space-y-1" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="flex items-center justify-between">
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Último llamado</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider opacity-60">Último llamado</span>
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                 </div>
                 
-                <div id="player-called-display" class="text-3xl font-extrabold text-blue-600 text-center tracking-tight">
+                <div id="player-called-display" class="text-3xl font-extrabold text-center tracking-tight" style="color: var(--primary);">
                     Esperando...
                 </div>
 
                 <!-- Historial Deslizable con flechas horizontales de navegación -->
-                <div class="border-t pt-1 relative">
-                    <button onclick="scrollContainer('player-history-list', 'left', 60)" class="absolute left-0 bottom-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                <div class="border-t pt-1 relative" style="border-color: var(--border);">
+                    <button onclick="scrollContainer('player-history-list', 'left', 60)" class="absolute left-0 bottom-1 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
-                    <button onclick="scrollContainer('player-history-list', 'right', 60)" class="absolute right-0 bottom-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <button onclick="scrollContainer('player-history-list', 'right', 60)" class="absolute right-0 bottom-1 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                     <div id="player-history-list" class="flex space-x-1.5 overflow-x-auto py-0.5 px-6 scrollbar-thin">
@@ -452,22 +537,22 @@
             </div>
 
             <!-- PANEL INTERMEDIO: Tablero de Control Completo con flechas de navegación -->
-            <div class="bg-white p-2 rounded-xl shadow border flex-shrink-0 space-y-1 relative">
-                <button onclick="scrollContainer('player-all-called-list', 'up', 40)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+            <div class="p-2 rounded-xl shadow border flex-shrink-0 space-y-1 relative" style="background-color: var(--bg-card); border-color: var(--border);">
+                <button onclick="scrollContainer('player-all-called-list', 'up', 40)" class="absolute top-1 right-1 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                 </button>
-                <button onclick="scrollContainer('player-all-called-list', 'down', 40)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                <button onclick="scrollContainer('player-all-called-list', 'down', 40)" class="absolute bottom-1 right-1 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition" style="background-color: var(--primary);">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
 
-                <span class="text-[8px] font-bold text-gray-400 uppercase block">Tablero de Control (Todos los llamados)</span>
+                <span class="text-[8px] font-bold uppercase block opacity-60">Tablero de Control (Todos los llamados)</span>
                 <div id="player-all-called-list" class="flex flex-wrap gap-1 max-h-12 overflow-y-auto py-0.5 pr-6">
                     <span class="text-gray-400 text-[9px] italic">Esperando que inicie el juego...</span>
                 </div>
             </div>
 
             <!-- Panel Central: Cartón responsivo adaptado según tipo de juego (Palabras o Números) -->
-            <div class="bg-white p-2 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0">
+            <div class="p-2 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div id="player-card-grid" class="p-1 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid; width: min(65vw, 28vh); height: min(65vw, 28vh);">
                     <!-- Casillas autogeneradas con Javascript -->
                 </div>
@@ -512,7 +597,7 @@
             adminCardMatrix: [],  
             adminMarkedIndices: [],
             adminWantsToPlay: true,
-            winnerRegistry: [] // Registro ordenado de ganadores locales de la sesión (ej. [ID1, ID2])
+            winnerRegistry: [] 
         };
 
         // VARIABLES DE CONTROL DE AUTOMATIZACIÓN Y ANIMACIÓN
@@ -521,12 +606,13 @@
         let secondsLeft = 15;
         let confettiAnimationId = null;
         let titleTapCount = 0; 
+        let ttsDrawActive = false; // Control de lectura por voz
 
         // VARIABLES DE CONTROL DEL MINIJUEGO "BINGO BIRD" (LOBBY DEL JUGADOR)
         let lobbyGameIntervalId = null;
         let lobbyGameCanvas = null;
         let lobbyGameCtx = null;
-        let bird = { x: 40, y: 50, radius: 6, velocity: 0, gravity: 0.25, jumpForce: -4 };
+        let bird = { x: 45, y: 50, radius: 7, velocity: 0, gravity: 0.22, jumpForce: -4 };
         let pipes = [];
         let gameScore = 0;
         let isLobbyGameOver = false;
@@ -538,11 +624,193 @@
             cosas: ["Mesa", "Silla", "Telefono", "Computadora", "Reloj", "Libro", "Lapiz", "Vaso", "Plato", "Llave", "Puerta", "Ventana", "Cama", "Lampara", "Espejo", "Camara", "Bolso", "Zapato", "Pelota", "Guitarra", "Auto", "Bicicleta", "Radio", "Television", "Taza", "Papel", "Cuaderno", "Teclado", "Monitor"]
         };
 
+        // ==========================================
+        // MOTOR SINTETIZADOR DE SONIDO (WEB AUDIO API - SIN ARCHIVOS EXTERNOS)
+        // ==========================================
+        const synth = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            playClick() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playCall() {
+                this.init();
+                const playTone = (freq, start, duration) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(0.06, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+                    osc.start(start);
+                    osc.stop(start + duration);
+                };
+                const now = this.ctx.currentTime;
+                playTone(523.25, now, 0.2); // C5
+                playTone(659.25, now + 0.12, 0.3); // E5
+            },
+            playVictory() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // Arpegio Do Mayor
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain.gain.setValueAtTime(0.04, now + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
+                    osc.start(now + idx * 0.1);
+                    osc.stop(now + idx * 0.1 + 0.35);
+                });
+            },
+            playBuzzer() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+                
+                osc1.frequency.setValueAtTime(95, now);
+                osc2.frequency.setValueAtTime(99, now); // Desafinación para sonido gordo de error
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.55);
+                osc2.stop(now + 0.55);
+            },
+            playJump() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(550, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playCrash() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+        };
+
+        // SISTEMA DE DIÁLOGO FLOTANTE (REEMPLAZA ALERT/CONFIRM NATIVOS)
+        function showCustomAlert(title, message, callback) {
+            document.getElementById('dialog-title').textContent = title;
+            document.getElementById('dialog-message').textContent = message;
+            
+            const btnNo = document.getElementById('dialog-btn-no');
+            const btnYes = document.getElementById('dialog-btn-yes');
+            
+            btnNo.classList.add('hidden');
+            btnYes.className = "w-full text-white py-2 rounded-lg font-semibold text-xs transition";
+            btnYes.style.backgroundColor = "var(--primary)";
+            
+            btnYes.onclick = () => {
+                document.getElementById('custom-dialog-modal').classList.add('hidden');
+                if (callback) callback();
+            };
+            document.getElementById('custom-dialog-modal').classList.remove('hidden');
+        }
+
+        function showCustomConfirm(title, message, onYes, onNo) {
+            document.getElementById('dialog-title').textContent = title;
+            document.getElementById('dialog-message').textContent = message;
+            
+            const btnNo = document.getElementById('dialog-btn-no');
+            const btnYes = document.getElementById('dialog-btn-yes');
+            
+            btnNo.classList.remove('hidden');
+            btnYes.className = "w-1/2 text-white py-2 rounded-lg font-semibold text-xs transition";
+            btnYes.style.backgroundColor = "var(--primary)";
+            
+            btnNo.onclick = () => {
+                document.getElementById('custom-dialog-modal').classList.add('hidden');
+                if (onNo) onNo();
+            };
+            btnYes.onclick = () => {
+                document.getElementById('custom-dialog-modal').classList.add('hidden');
+                if (onYes) onYes();
+            };
+            document.getElementById('custom-dialog-modal').classList.remove('hidden');
+        }
+
+        // CONTROLADOR DEL MOTOR DE SKINS
+        function applySkin(skinName) {
+            document.body.setAttribute('data-theme', skinName);
+            showToast(`Tema "${skinName}" aplicado.`);
+        }
+
+        // CONTROLADOR DE LECTURA POR VOZ (TEXT-TO-SPEECH)
+        function toggleTtsCalling() {
+            ttsDrawActive = document.getElementById('admin-tts-toggle').checked;
+            showToast(ttsDrawActive ? "Lectura por voz activada." : "Lectura por voz desactivada.");
+        }
+
+        function speakText(text) {
+            if (!ttsDrawActive) return;
+            const utterance = new SpeechSynthesisUtterance();
+            utterance.text = text;
+            utterance.lang = 'es-ES';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // VIBRACIÓN HÁPTICA COMPATIBLE
+        function triggerHapticVibration(pattern) {
+            if (navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
         // INICIALIZACIÓN
         document.addEventListener('DOMContentLoaded', () => {
             toggleConfigFields();
             loadPresetWords();
-            checkRestoreSessions(); 
             checkUrlInviteParams(); 
 
             // Registrar oyente táctil para el minijuego Bingo Bird
@@ -576,12 +844,10 @@
 
         // CONTROL DE SALIDA MANUAL DEL JUEGO (BOTÓN ESCAPE)
         function confirmExitGame() {
-            if (confirm("¿Estás seguro de que deseas salir al menú principal? Se limpiará tu sesión actual.")) {
+            showCustomConfirm("Salir del Juego", "¿Estás seguro de que deseas salir al menú principal? Perderás tu progreso actual.", () => {
                 stopAutoDraw();
-                localStorage.removeItem('bingo_player_session');
-                localStorage.removeItem('bingo_admin_session');
                 location.reload();
-            }
+            });
         }
 
         // ACTIVADOR DE ADMINISTRADOR OCULTO (5 toques en el título principal)
@@ -809,7 +1075,7 @@
                         };
 
                         const tr = document.createElement('tr');
-                        tr.className = "hover:bg-gray-50 border-b border-gray-100";
+                        tr.className = "hover:bg-gray-50 border-b border-gray-100 text-black";
                         tr.innerHTML = `
                             <td class="p-3 font-bold text-gray-800 max-w-[120px] truncate" title="${sala.nombre_sesion}">${sala.nombre_sesion}</td>
                             <td class="p-3 text-center font-mono font-bold text-blue-600">${sala.codigo_sala}</td>
@@ -908,24 +1174,22 @@
         }
 
         async function deleteAdminRoom(roomId) {
-            if (!confirm("¿Estás seguro de que deseas eliminar esta sala de forma permanente? Se desconectarán todos los jugadores.")) {
-                return;
-            }
+            showCustomConfirm("Eliminar Sala", "¿Estás seguro de que deseas eliminar esta sala de forma permanente? Se desconectarán todos los jugadores.", async () => {
+                try {
+                    const { error } = await supabaseClient
+                        .from('bingo_juegos')
+                        .delete()
+                        .eq('id', roomId);
 
-            try {
-                const { error } = await supabaseClient
-                    .from('bingo_juegos')
-                    .delete()
-                    .eq('id', roomId);
+                    if (error) throw error;
 
-                if (error) throw error;
-
-                showToast("Sala eliminada del servidor.");
-                loadAdminDashboard(); 
-            } catch (err) {
-                console.error(err);
-                showToast("Error al eliminar la sala.");
-            }
+                    showToast("Sala eliminada del servidor.");
+                    loadAdminDashboard(); 
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error al eliminar la sala.");
+                }
+            });
         }
 
         function returnToDashboardFromPlay() {
@@ -1144,6 +1408,9 @@
                             return; 
                         }
 
+                        // Reproducir sonido de clic de sintetizador
+                        synth.playClick();
+
                         if (gameState.adminMarkedIndices.includes(cellIndex)) {
                             gameState.adminMarkedIndices = gameState.adminMarkedIndices.filter(i => i !== cellIndex);
                             btn.className = btn.className.replace(/bg-emerald-600|text-white|border-emerald-700|shadow-inner/g, '').trim();
@@ -1171,6 +1438,7 @@
             const validMarksCount = gameState.adminMarkedIndices.filter(i => i !== centerIndex).length;
 
             if (validMarksCount >= targetCount) {
+                synth.playVictory();
                 showToast("¡Felicidades! Has completado tu cartón de Administrador.");
             }
         }
@@ -1220,6 +1488,7 @@
         }
 
         function addNewPlayerToList(player) {
+            synth.playClick();
             showToast(`${player.nombre} se ha unido`);
             updatePlayerListUI();
         }
@@ -1253,7 +1522,7 @@
             gameState.allElements.forEach(item => {
                 const cell = document.createElement('div');
                 cell.id = `admin-cell-${item}`;
-                cell.className = 'border text-xs py-2 px-1 text-center font-bold bg-gray-50 rounded select-none truncate';
+                cell.className = 'border text-xs py-2 px-1 text-center font-bold bg-gray-50 rounded select-none truncate text-black';
                 cell.textContent = item;
                 grid.appendChild(cell);
             });
@@ -1327,6 +1596,10 @@
             const chosen = pool[Math.floor(Math.random() * pool.length)];
             gameState.calledElements.push(chosen);
 
+            // SINTETIZADOR: Reproducir sonido de tómbola y hablar por altavoz si está activo
+            synth.playCall();
+            speakText(`Próximo elemento llamado, ${chosen}`);
+
             document.getElementById('current-called-display').textContent = chosen;
             const cell = document.getElementById(`admin-cell-${chosen}`);
             if (cell) {
@@ -1342,16 +1615,15 @@
             if (error) {
                 showToast('Error al enviar actualización');
             } else {
-                // RECALCULO DE ACIERTOS REALES AL SEGUNDO CUANDO EL ADMIN SACA UN NÚMERO
                 updatePlayersProgressList();
             }
         }
 
         // Monitoreo en tiempo real de progresos y de ganadores unificado en un solo canal
-        let playersCardsCache = {}; // Almacena temporalmente los cartones de los jugadores para evitar lecturas repetidas
+        let playersCardsCache = {}; 
 
         function listenToWinners() {
-            gameState.realtimeSubscription = supabaseClient
+            supabaseClient
                 .channel('admin-room-updates')
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
@@ -1371,7 +1643,9 @@
                                 gameState.winnerRegistry.push(payload.new.id);
                             }
 
-                            startCelebration(); 
+                            // SINTETIZADOR: Fanfarria de Bingo Reclamado
+                            synth.playVictory();
+                            triggerHapticVibration([100, 50, 100, 50, 300]);
                             showToast(`¡BINGO! Reclamo de ${payload.new.nombre}`);
                         }
                     }
@@ -1388,7 +1662,6 @@
                     schema: 'public',
                     table: 'bingo_cartones'
                 }, payload => {
-                    // Almacenar el cartón en caché para realizar la verificación cruzada de aciertos
                     playersCardsCache[payload.new.jugador_id] = payload.new.matriz;
                     updatePlayersProgressList();
                 })
@@ -1397,10 +1670,9 @@
             updatePlayersProgressList();
         }
 
-        // MONITOREO CRUZADO EN TIEMPO REAL CON MEDALLERO DE GANADORES EN ORDEN DE LLEGADA
+        // MONITOREO CRUZADO EN TIEMPO REAL
         async function updatePlayersProgressList() {
             try {
-                // 1. Obtener jugadores de la sala
                 const { data: jugadores, error: errJ } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('*')
@@ -1416,7 +1688,7 @@
                     return;
                 }
 
-                // 2. Obtener matrices de cartones para cruce matemático si no están en caché
+                // Obtener matrices de cartones para cruce matemático si no están en caché
                 const missingCardPlayerIds = jugadores
                     .filter(j => !playersCardsCache[j.id])
                     .map(j => j.id);
@@ -1434,7 +1706,6 @@
                     }
                 }
 
-                // 3. Cruzar los datos para el reporte de aciertos reales (sin trampas)
                 const progressData = jugadores.map(jugador => {
                     const marcadas = jugador.casillas_marcadas || [];
                     const matriz = playersCardsCache[jugador.id] || [];
@@ -1445,7 +1716,7 @@
                     
                     // Contar aciertos reales (cuántos elementos de su matriz YA salieron de la tómbola)
                     const aciertosReales = matriz.filter((val, index) => {
-                        if (index === centerIndex && hasOddDimension) return false; // Excluir espacio libre
+                        if (index === centerIndex && hasOddDimension) return false; 
                         return gameState.calledElements.includes(val);
                     }).length;
 
@@ -1459,7 +1730,6 @@
                     let statusClass = 'bg-blue-100 text-blue-800';
 
                     if (jugador.es_ganador) {
-                        // Conseguir posición en medallas según orden de llegada
                         let positionIndex = gameState.winnerRegistry.indexOf(jugador.id);
                         if (positionIndex === -1) {
                             gameState.winnerRegistry.push(jugador.id);
@@ -1522,17 +1792,53 @@
                 .eq('jugador_id', jugador.id)
                 .single();
 
-            console.group(`Verificación de Cartón de ${jugador.nombre}`);
-            console.log("Matriz Generada: ", carton.matriz);
-            console.log("Elementos Llamados: ", gameState.calledElements);
-            console.groupEnd();
-
-            alert(`Cartón de ${jugador.nombre} verificado visualmente en consola. Presione aceptar para confirmar la finalización del juego.`);
+            const matriz = carton.matriz || [];
+            const totalCells = gameState.rows * gameState.cols;
+            const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
             
-            await supabaseClient
-                .from('bingo_juegos')
-                .update({ estado: 'finalizado' })
-                .eq('id', gameState.gameId);
+            // 1. Verificación Matemática Real (Contar cuántos aciertos tiene de verdad en el cartón)
+            const aciertosRealesCount = matriz.filter((val, index) => {
+                if (index === centerIndex && hasOddDimension) return false;
+                return gameState.calledElements.includes(val);
+            }).length;
+
+            const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
+            const esBingoLegitimo = (aciertosRealesCount >= targetCellsCount);
+
+            if (esBingoLegitimo) {
+                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos. ¿Confirmar su victoria y dar por finalizada la sesión?`, async () => {
+                    await supabaseClient
+                        .from('bingo_juegos')
+                        .update({ estado: 'finalizado' })
+                        .eq('id', gameState.gameId);
+                });
+            } else {
+                // EL JUGADOR TRATÓ DE HACER TRAMPA (O SE EQUIVOCÓ AL MARCAR)
+                synth.playBuzzer(); // Zumbido de error en el Administrador
+                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es FALSO (Solo tiene ${aciertosRealesCount} aciertos de ${targetCellsCount} requeridos). ¿Rechazar su reclamo y descalificarlo temporalmente para seguir jugando?`, async () => {
+                    // Resetear es_ganador en Supabase para el jugador tramposo
+                    await supabaseClient
+                        .from('bingo_jugadores')
+                        .update({ es_ganador: false })
+                        .eq('id', jugador.id);
+
+                    // Escribir en la configuración de la sala el aviso de bingo falso para transmitirlo a todos en tiempo real
+                    let updatedConfig = { ...gameState.configuracion, ultimo_tramposo: jugador.nombre, rechazo_time: Date.now() };
+                    
+                    await supabaseClient
+                        .from('bingo_juegos')
+                        .update({ configuracion: updatedConfig })
+                        .eq('id', gameState.gameId);
+
+                    // Resetear panel admin
+                    document.getElementById('btn-verify-winner').classList.add('hidden');
+                    document.getElementById('btn-draw').className = "bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-bold text-lg shadow transition w-full";
+                    
+                    showToast(`Reclamo de ${jugador.nombre} rechazado por falso.`);
+                    updatePlayersProgressList();
+                });
+            }
         }
 
         // ==========================================
@@ -1549,7 +1855,6 @@
             }
 
             try {
-                // 1. Validar la existencia de la sala y si ya existe el jugador registrado anteriormente (Reconexión)
                 const { data: juego, error: errJuego } = await supabaseClient
                     .from('bingo_juegos')
                     .select('*')
@@ -1572,8 +1877,13 @@
                 gameState.rows = juego.filas;
                 gameState.cols = juego.columnas;
                 gameState.role = 'player';
+                
+                const totalCells = juego.filas * juego.columnas;
+                const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
+                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+                
+                gameState.markedIndices = isOddDimension ? [centerIndex] : [];
 
-                // VERIFICACIÓN DE RECONEXIÓN: ¿El jugador ya estaba registrado en esta sala?
                 const { data: jugadorExistente } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('*')
@@ -1582,11 +1892,9 @@
                     .maybeSingle();
 
                 if (jugadorExistente) {
-                    // El jugador ya existía en la base de datos (se cayó la pestaña y volvió a ingresar)
                     gameState.playerId = jugadorExistente.id;
                     gameState.markedIndices = jugadorExistente.casillas_marcadas || [];
 
-                    // Recuperar el cartón físico que ya tenía guardado en Supabase
                     const { data: cartonExistente } = await supabaseClient
                         .from('bingo_cartones')
                         .select('matriz')
@@ -1607,15 +1915,8 @@
                     listenToGameStart();
                     updatePlayerCalledElements(juego.elementos_llamados);
                     showToast("Sesión y cartón recuperados de la sala.");
-                    return; // Detener flujo para no crear duplicados
+                    return; 
                 }
-
-                // Si no existía, crear el registro de jugador como habitualmente
-                const totalCells = juego.filas * juego.columnas;
-                const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
-                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
-                
-                gameState.markedIndices = isOddDimension ? [centerIndex] : [];
 
                 const { data: jugador, error: errJugador } = await supabaseClient
                     .from('bingo_jugadores')
@@ -1642,7 +1943,6 @@
                     basePool = [...juego.configuracion.palabras];
                 }
 
-                // ALGORITMO FISHER-YATES: Mezcla aleatoria única
                 const shuffled = [...basePool];
                 for (let i = shuffled.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -1741,6 +2041,9 @@
             }
         }
 
+        // ESCRUCHADOR EN TIEMPO REAL: Soporta notificaciones flotantes de bingo falso
+        let lastProcessedRejectionTime = null;
+
         function listenToGameStart() {
             gameState.realtimeSubscription = supabaseClient
                 .channel('game-state-updates')
@@ -1751,19 +2054,45 @@
                 }, payload => {
                     if (payload.new.id === gameState.gameId) {
                         const juego = payload.new;
+                        
+                        // 1. Validar si el juego pasó a 'jugando'
                         if (juego.estado === 'jugando' && document.getElementById('view-player-play').classList.contains('hidden')) {
                             startGameForPlayer();
                         }
+                        
+                        // 2. Validar si el juego finalizó (Victoria confirmada)
                         if (juego.estado === 'finalizado') {
                             displayGameWinnerOverlay();
                         }
+
+                        // 3. Validar si se reportó un reclamo de BINGO FALSO
+                        const config = juego.configuracion || {};
+                        if (config.ultimo_tramposo && config.rechazo_time !== lastProcessedRejectionTime) {
+                            lastProcessedRejectionTime = config.rechazo_time;
+                            
+                            // Emitir zumbido táctil y mostrar diálogo flotante personalizado
+                            synth.playBuzzer();
+                            triggerHapticVibration([300, 100, 300]);
+                            
+                            showCustomAlert(
+                                "RECLAMO DE BINGO FALSO ❌", 
+                                `El jugador "${config.ultimo_tramposo}" reclamó un BINGO falso. ¡La partida continúa y se reanuda la tómbola!`
+                            );
+                            
+                            // Re-sincronizar marcas locales por si el descalificado era el propio cliente local
+                            if (gameState.playerName === config.ultimo_tramposo) {
+                                gameState.markedIndices = [12]; // resetear a solo libre
+                                buildPlayerCardUI();
+                                syncPlayerMarksToDatabase();
+                            }
+                        }
+
                         updatePlayerCalledElements(juego.elementos_llamados);
                     }
                 })
                 .subscribe();
         }
 
-        // Consultar el ganador legítimo de la sesión y desplegar el telón final apoteósico
         async function displayGameWinnerOverlay() {
             try {
                 // Obtener todos los ganadores reales de Supabase
@@ -1782,6 +2111,9 @@
                 
                 // Mostrar telón de celebración a pantalla completa para todos
                 document.getElementById('celebration-overlay').classList.remove('hidden');
+                
+                synth.playVictory();
+                triggerHapticVibration([500, 100, 500, 100, 1000]);
                 startCelebration();
 
                 localStorage.removeItem('bingo_player_session');
@@ -1819,13 +2151,13 @@
                 btn.id = `player-cell-${index}`;
                 btn.className = 'flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
                 
-                // Ajustar relaciones responsivas de tamaño según palabras o números
+                // Ajustar relaciones de tamaño dinámico
                 btn.className += ` ${getWordFontSizeClass(val)}`;
                 
                 if (gameState.cols > 4) {
                     btn.classList.add('aspect-square');
                 } else {
-                    btn.classList.add('py-3.5'); // Hacer casillas rectangulares si hay pocas columnas para dar aire a las palabras
+                    btn.classList.add('py-3.5'); // Hacer casillas rectangulares si hay pocas columnas
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -1848,8 +2180,13 @@
                         const isCalled = gameState.calledElements.includes(cellValue);
                         if (!isCalled) {
                             showToast(`"${cellValue}" aún no ha sido extraído por el Administrador.`);
-                            return; // Bloquear acción de trampa
+                            synth.playBuzzer(); // Zumbido táctil local de error
+                            return; 
                         }
+
+                        // Reproducir sonido táctil sintetizado de clic
+                        synth.playClick();
+                        triggerHapticVibration(50); // Vibración corta de marcado
 
                         if (gameState.markedIndices.includes(cellIndex)) {
                             gameState.markedIndices = gameState.markedIndices.filter(i => i !== cellIndex);
@@ -1898,7 +2235,6 @@
             const validMarksCount = gameState.markedIndices.filter(i => i !== centerIndex).length;
 
             if (validMarksCount >= targetCount) {
-                // Reclamar victoria de forma automática al completar el cartón
                 claimBingo();
             }
         }
@@ -1965,7 +2301,7 @@
                 allCalledContainer.appendChild(badge);
             });
 
-            // 3. Notificación de presencia en cartón
+            // 3. Notificación de presencia en cartón y vibración correspondiente
             const matchedIndex = gameState.cardMatrix.indexOf(last);
             if (matchedIndex !== -1) {
                 const totalCells = gameState.rows * gameState.cols;
@@ -1974,6 +2310,7 @@
                 
                 if (matchedIndex !== centerIndex) {
                     showToast(`¡Tienes "${last}" en tu cartón!`);
+                    triggerHapticVibration([50, 50, 50]); // Vibración doble corta
                 }
             }
         }
@@ -1997,21 +2334,16 @@
         // ==========================================
 
         function startLobbyGame() {
-            // Reiniciar variables del juego
             bird = { x: 45, y: 50, radius: 7, velocity: 0, gravity: 0.22, jumpForce: -4 };
             pipes = [];
             gameScore = 0;
             isLobbyGameOver = false;
             document.getElementById('game-score-display').textContent = '0';
             
-            // Forzar resize de canvas
             lobbyGameCanvas.width = lobbyGameCanvas.offsetWidth;
             lobbyGameCanvas.height = lobbyGameCanvas.offsetHeight;
 
-            // Limpiar hilos previos por seguridad
             if (lobbyGameIntervalId) clearInterval(lobbyGameIntervalId);
-            
-            // Iniciar bucle principal a 60FPS
             lobbyGameIntervalId = setInterval(updateLobbyGame, 1000 / 60);
         }
 
@@ -2032,15 +2364,14 @@
                 resetLobbyGame();
             } else {
                 bird.velocity = bird.jumpForce;
+                synth.playJump(); // Sonido sintetizado de salto
             }
         }
 
         function updateLobbyGame() {
-            // 1. Aplicar física a la bola de bingo
             bird.velocity += bird.gravity;
             bird.y += bird.velocity;
 
-            // Limitar bordes
             if (bird.y + bird.radius > lobbyGameCanvas.height) {
                 bird.y = lobbyGameCanvas.height - bird.radius;
                 endLobbyGame();
@@ -2050,9 +2381,8 @@
                 bird.velocity = 0;
             }
 
-            // 2. Generación y movimiento de tuberías (obstáculos)
             if (pipes.length === 0 || pipes[pipes.length - 1].x < lobbyGameCanvas.width - 95) {
-                const gap = 38; // Tamaño de la brecha para pasar
+                const gap = 38; 
                 const minHeight = 15;
                 const maxHeight = lobbyGameCanvas.height - gap - minHeight;
                 const topHeight = Math.floor(Math.random() * (maxHeight - minHeight)) + minHeight;
@@ -2066,18 +2396,16 @@
                 });
             }
 
-            // Actualizar tuberías
             pipes.forEach(pipe => {
-                pipe.x -= 1.4; // Velocidad de avance de obstáculos
+                pipe.x -= 1.4; 
 
-                // Sumar puntos al pasar obstáculos
                 if (!pipe.passed && pipe.x + pipe.width < bird.x) {
                     pipe.passed = true;
                     gameScore++;
                     document.getElementById('game-score-display').textContent = gameScore;
+                    synth.playClick(); // Sonido corto de punto superado
                 }
 
-                // Detector de Colisiones
                 if (
                     bird.x + bird.radius > pipe.x &&
                     bird.x - bird.radius < pipe.x + pipe.width &&
@@ -2087,39 +2415,31 @@
                 }
             });
 
-            // Limpiar tuberías fuera de pantalla
             pipes = pipes.filter(p => p.x + p.width > 0);
 
-            // 3. Renderizar cuadro a cuadro
             renderLobbyGame();
         }
 
         function renderLobbyGame() {
             lobbyGameCtx.clearRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
 
-            // Dibujar Tuberías
             pipes.forEach(pipe => {
-                lobbyGameCtx.fillStyle = '#10B981'; // Verde esmeralda
-                // Tubería superior
+                lobbyGameCtx.fillStyle = '#10B981'; 
                 lobbyGameCtx.fillRect(pipe.x, 0, pipe.width, pipe.top);
-                // Tubería inferior
                 lobbyGameCtx.fillRect(pipe.x, pipe.bottom, pipe.width, lobbyGameCanvas.height - pipe.bottom);
             });
 
-            // Dibujar Bola de Bingo (Jugador)
             lobbyGameCtx.beginPath();
             lobbyGameCtx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
-            lobbyGameCtx.fillStyle = '#3B82F6'; // Azul
+            lobbyGameCtx.fillStyle = '#3B82F6'; 
             lobbyGameCtx.fill();
             lobbyGameCtx.closePath();
 
-            // Dibujar número estético de bola de bingo en el centro del ave
             lobbyGameCtx.fillStyle = '#FFFFFF';
             lobbyGameCtx.font = 'bold 5px Arial';
             lobbyGameCtx.textAlign = 'center';
             lobbyGameCtx.fillText('75', bird.x, bird.y + 2);
 
-            // Renderizar fin de juego
             if (isLobbyGameOver) {
                 lobbyGameCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
                 lobbyGameCtx.fillRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
@@ -2136,6 +2456,8 @@
 
         function endLobbyGame() {
             isLobbyGameOver = true;
+            synth.playCrash(); // Sonido sintetizado de choque
+            triggerHapticVibration(150); // Vibración de colisión
             stopLobbyGame();
             renderLobbyGame();
         }
