@@ -110,7 +110,7 @@
         }
     </style>
 </head>
-<body class="h-[100dvh] flex flex-col relative overflow-hidden select-none" data-theme="classic">
+<body class="h-[100dvh] flex flex-col relative overflow-hidden select-none" data-theme="classic" onclick="triggerInitialUnlock()">
 
     <!-- Canvas para animación de celebración apoteósica -->
     <canvas id="confetti-canvas"></canvas>
@@ -127,6 +127,28 @@
         </div>
     </div>
 
+    <!-- MODAL DE INSPECCIÓN EN TIEMPO REAL DEL CARTÓN DE JUGADORES (ADMIN) -->
+    <div id="player-inspect-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="rounded-xl shadow-xl w-full max-w-sm p-4 space-y-4 text-center border transition-all duration-300" style="background-color: var(--bg-card); border-color: var(--border);">
+            <div class="flex justify-between items-center border-b pb-2" style="border-color: var(--border);">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-700" id="inspect-title">Cartón de Jugador</h3>
+                <button onclick="closeInspectModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">&times;</button>
+            </div>
+            <div class="flex items-center justify-center py-2">
+                <div id="inspect-grid" class="p-1 bg-gray-100 rounded-lg gap-1.5 w-full max-h-[280px]" style="display: grid; width: 260px; height: 260px;">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+            <div class="text-[9px] text-gray-500 text-left space-y-1 bg-gray-50 p-2 rounded border" style="border-color: var(--border);">
+                <p>🟢 Verde: Extraído por tómbola y marcado por el jugador.</p>
+                <p>🟡 Amarillo: Extraído por tómbola pero NO marcado por el jugador.</p>
+                <p>🔴 Rojo: Marcado por el jugador sin haber sido extraído.</p>
+                <p>⚪ Blanco: Casilla pendiente.</p>
+            </div>
+            <button onclick="closeInspectModal()" class="w-full text-white py-2 rounded-lg font-semibold text-xs transition" style="background-color: var(--primary);">Cerrar</button>
+        </div>
+    </div>
+
     <!-- Overlay de victoria apoteósica coordinada -->
     <div id="celebration-overlay" class="fixed inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center text-center p-6 hidden">
         <div class="text-7xl mb-4 animate-bounce">🏆</div>
@@ -138,7 +160,10 @@
 
     <!-- Encabezado de la Aplicación -->
     <header class="text-white p-3 shadow-md text-center z-10 flex justify-between items-center flex-shrink-0" style="background-color: var(--primary);">
-        <div class="w-8"></div>
+        <!-- Botón de Activar Voces y Audio global -->
+        <button onclick="forceAudioUnblock()" class="text-white hover:text-yellow-200 p-1 bg-white bg-opacity-10 rounded-lg text-xs font-bold px-2 py-1 flex items-center space-x-1" title="Activar Voces y Sonidos">
+            <span>🔊 Activar Audio</span>
+        </button>
         <div class="text-center cursor-pointer" onclick="handleTitleTap()">
             <h1 class="text-2xl font-bold tracking-wide select-none">Bingo Realtime</h1>
             <p class="text-[10px] opacity-90 font-medium font-mono">Soporte Multidimensión</p>
@@ -424,7 +449,7 @@
                         <div id="admin-tab-board-view" class="space-y-3">
                             <!-- MONITOREO DE PROGRESO DE JUGADORES -->
                             <div class="p-2 rounded-lg border text-black" style="background-color: var(--bg-main); border-color: var(--border);">
-                                <h4 class="text-[9px] font-bold uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
+                                <h4 class="text-[9px] font-bold uppercase tracking-wider mb-1">Monitoreo de Jugadores (Haz clic para inspeccionar cartón)</h4>
                                 <div id="admin-progress-list" class="space-y-1 text-[11px]">
                                     <span class="text-gray-400 italic">Esperando actividad...</span>
                                 </div>
@@ -440,7 +465,7 @@
                             </button>
                         </div>
 
-                        <!-- Sub-vista B: Mi Cartón (Híbrido) -->
+                        <!-- Sub-vista B: Mi Cartón -->
                         <div id="admin-tab-card-view" class="hidden">
                             <div class="flex items-center justify-center py-4">
                                 <div id="admin-player-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1.5" style="display: grid;">
@@ -472,7 +497,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY + MINIJUEGO BINGO BIRD) -->
+        <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY + ANIMACIÓN DE TÓMBOLA REALISTA) -->
         <div id="view-player-lobby" class="hidden space-y-3 flex flex-col h-full overflow-hidden justify-between">
             <div class="p-3 rounded-xl shadow text-center space-y-2 flex-shrink-0" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="animate-bounce inline-block p-2.5 bg-green-100 rounded-full text-green-600">
@@ -486,20 +511,15 @@
                 </div>
             </div>
 
-            <!-- Contenedor del minijuego para matar el aburrimiento -->
+            <!-- Contenedor de la animación de la tómbola de bingo -->
             <div class="p-3 rounded-xl shadow border flex-grow flex flex-col items-center justify-center space-y-2 min-h-0 overflow-hidden" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="text-center">
-                    <h3 class="text-xs font-black uppercase tracking-wider" style="color: var(--primary);">🎮 Minijuego: Bingo Bird</h3>
-                    <p class="text-[9px] opacity-60">¡Toca el recuadro gris para saltar y esquivar!</p>
+                    <h3 class="text-xs font-black uppercase tracking-wider" style="color: var(--primary);">🔮 Mezclando Balotas</h3>
+                    <p class="text-[9px] opacity-60">Preparando el bolillero para la partida...</p>
                 </div>
                 
-                <!-- Lienzo del juego adaptable a la ventana móvil -->
-                <canvas id="lobby-game-canvas" class="border-2 rounded bg-gray-50 cursor-pointer w-full max-w-[280px] h-32" style="border-color: var(--border);"></canvas>
-                
-                <div class="flex items-center justify-between w-full max-w-[280px] text-[10px] font-bold opacity-75">
-                    <span>Puntos: <strong id="game-score-display" style="color: var(--primary);">0</strong></span>
-                    <button onclick="resetLobbyGame()" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px]">Reiniciar juego</button>
-                </div>
+                <!-- Lienzo de la tómbola adaptativo -->
+                <canvas id="lobby-drum-canvas" class="border rounded bg-gray-50 w-full max-w-[280px] h-40" style="border-color: var(--border);"></canvas>
             </div>
         </div>
 
@@ -553,7 +573,7 @@
 
             <!-- Panel Central: Cartón responsivo adaptado según tipo de juego (Palabras o Números) -->
             <div class="p-2 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
-                <div id="player-card-grid" class="p-1 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid; width: min(65vw, 28vh); height: min(65vw, 28vh);">
+                <div id="player-card-grid" class="p-1 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid; width: min(85vw, 40vh); height: min(85vw, 40vh);">
                     <!-- Casillas autogeneradas con Javascript -->
                 </div>
             </div>
@@ -579,7 +599,7 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ESTADO GLOBAL DE LA APP
+        // ESTADO GLOBAL DE LA APP (Usa sessionStorage para soportar independencias de pestañas)
         let gameState = {
             role: null,           
             gameId: null,         
@@ -597,6 +617,7 @@
             adminCardMatrix: [],  
             adminMarkedIndices: [],
             adminWantsToPlay: true,
+            configuracion: {},
             winnerRegistry: [] 
         };
 
@@ -608,14 +629,13 @@
         let titleTapCount = 0; 
         let ttsDrawActive = false; // Control de lectura por voz
 
-        // VARIABLES DE CONTROL DEL MINIJUEGO "BINGO BIRD" (LOBBY DEL JUGADOR)
-        let lobbyGameIntervalId = null;
-        let lobbyGameCanvas = null;
-        let lobbyGameCtx = null;
-        let bird = { x: 45, y: 50, radius: 7, velocity: 0, gravity: 0.22, jumpForce: -4 };
-        let pipes = [];
-        let gameScore = 0;
-        let isLobbyGameOver = false;
+        // VARIABLES DE LA ANIMACIÓN DE LA TÓMBOLA DE BINGO
+        let drumAnimFrameId = null;
+        let drumCanvas = null;
+        let drumCtx = null;
+        let drumBalls = [];
+        let drumAngle = 0;
+        let drumSoundTicks = 0;
 
         // PRESETS DE PALABRAS
         const PRESETS = {
@@ -625,7 +645,7 @@
         };
 
         // ==========================================
-        // MOTOR SINTETIZADOR DE SONIDO (WEB AUDIO API - SIN ARCHIVOS EXTERNOS)
+        // MOTOR SINTETIZADOR DE SONIDO ENRIQUECIDO (WEB AUDIO API)
         // ==========================================
         const synth = {
             ctx: null,
@@ -634,58 +654,90 @@
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
             },
-            playClick() {
+            unlockAudio() {
                 this.init();
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                // Emitir un breve oscilador para validar bypass de autoplay de iOS Safari
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
                 osc.start();
-                osc.stop(this.ctx.currentTime + 0.1);
+                osc.stop(this.ctx.currentTime + 0.05);
+
+                // Forzar desbloqueo de TTS (SpeechSynthesis) en iOS/Android
+                try {
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+                } catch(e) {}
             },
-            playCall() {
+            playClick() {
                 this.init();
-                const playTone = (freq, start, duration) => {
+                const now = this.ctx.currentTime;
+                // Pluck armónico de dos frecuencias (Do y Mi agudo)
+                const playPluck = (freq, vol) => {
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, start);
-                    gain.gain.setValueAtTime(0.06, start);
-                    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-                    osc.start(start);
-                    osc.stop(start + duration);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
                 };
+                playPluck(523.25, 0.05); // C5
+                playPluck(659.25, 0.03); // E5
+            },
+            playCall() {
+                this.init();
                 const now = this.ctx.currentTime;
-                playTone(523.25, now, 0.2); // C5
-                playTone(659.25, now + 0.12, 0.3); // E5
+                // Efecto de pop de extracción rápido
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
             },
             playVictory() {
                 this.init();
                 const now = this.ctx.currentTime;
-                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // Arpegio Do Mayor
-                notes.forEach((freq, idx) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
-                    gain.gain.setValueAtTime(0.04, now + idx * 0.1);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
-                    osc.start(now + idx * 0.1);
-                    osc.stop(now + idx * 0.1 + 0.35);
+                // Fanfarria melódica festiva con acordes mayores en progresión
+                const chordNotes = [
+                    [523.25, 659.25, 783.99], // Do Mayor (C5 - E5 - G5)
+                    [587.33, 739.99, 880.00], // Re Mayor (D5 - F#5 - A5)
+                    [659.25, 830.61, 987.77], // Mi Mayor (E5 - G#5 - B5)
+                    [1046.50, 1318.51, 1567.98] // Do Mayor Octava Superior (C6 - E6 - G6)
+                ];
+                chordNotes.forEach((chord, step) => {
+                    const stepTime = now + step * 0.18;
+                    chord.forEach(freq => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, stepTime);
+                        gain.gain.setValueAtTime(0.03, stepTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, stepTime + 0.35);
+                        osc.start(stepTime);
+                        osc.stop(stepTime + 0.35);
+                    });
                 });
             },
             playBuzzer() {
                 this.init();
                 const now = this.ctx.currentTime;
+                // Tono descendente desagradable (sad trombone / buzzer)
                 const osc1 = this.ctx.createOscillator();
                 const osc2 = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -697,48 +749,59 @@
                 osc1.type = 'sawtooth';
                 osc2.type = 'sawtooth';
                 
-                osc1.frequency.setValueAtTime(95, now);
-                osc2.frequency.setValueAtTime(99, now); // Desafinación para sonido gordo de error
+                osc1.frequency.setValueAtTime(140, now);
+                osc1.frequency.linearRampToValueAtTime(70, now + 0.7);
+                osc2.frequency.setValueAtTime(143, now);
+                osc2.frequency.linearRampToValueAtTime(73, now + 0.7);
                 
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
                 
                 osc1.start(now);
                 osc2.start(now);
-                osc1.stop(now + 0.55);
-                osc2.stop(now + 0.55);
+                osc1.stop(now + 0.7);
+                osc2.stop(now + 0.7);
             },
-            playJump() {
+            playTick() {
                 this.init();
+                const now = this.ctx.currentTime;
+                // Ruido sutil y corto para las colisiones de la tómbola
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(550, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.1);
-            },
-            playCrash() {
-                this.init();
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(110, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.25);
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.25);
+                osc.frequency.setValueAtTime(Math.random() * 200 + 100, now);
+                gain.gain.setValueAtTime(0.015, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                osc.start(now);
+                osc.stop(now + 0.03);
             }
         };
 
-        // SISTEMA DE DIÁLOGO FLOTANTE (REEMPLAZA ALERT/CONFIRM NATIVOS)
+        // GESTOR TÁCTIL PARA EL DESBLOQUEO DE AUDIO (Bypass del navegador)
+        let isAudioUnlocked = false;
+        function triggerInitialUnlock() {
+            if (!isAudioUnlocked) {
+                synth.unlockAudio();
+                isAudioUnlocked = true;
+            }
+        }
+        function forceAudioUnblock() {
+            synth.unlockAudio();
+            isAudioUnlocked = true;
+            showToast("Canal de Audio Desbloqueado");
+        }
+
+        // GESTIÓN DE SUSCRIPCIONES REALTIME SEGURAS
+        function safelyUnsubscribeCurrent() {
+            if (gameState.realtimeSubscription) {
+                supabaseClient.removeChannel(gameState.realtimeSubscription);
+                gameState.realtimeSubscription = null;
+            }
+        }
+
+        // SISTEMA DE DIÁLOGO FLOTANTE
         function showCustomAlert(title, message, callback) {
             document.getElementById('dialog-title').textContent = title;
             document.getElementById('dialog-message').textContent = message;
@@ -779,7 +842,7 @@
             document.getElementById('custom-dialog-modal').classList.remove('hidden');
         }
 
-        // CONTROLADOR DEL MOTOR DE SKINS
+        // MOTOR DE SKINS
         function applySkin(skinName) {
             document.body.setAttribute('data-theme', skinName);
             showToast(`Tema "${skinName}" aplicado.`);
@@ -793,35 +856,24 @@
 
         function speakText(text) {
             if (!ttsDrawActive) return;
-            const utterance = new SpeechSynthesisUtterance();
-            utterance.text = text;
-            utterance.lang = 'es-ES';
-            utterance.rate = 0.9;
-            window.speechSynthesis.speak(utterance);
+            try {
+                window.speechSynthesis.cancel(); // Cancelar voz pendiente para evitar demoras
+                const utterance = new SpeechSynthesisUtterance();
+                utterance.text = text;
+                utterance.lang = 'es-ES';
+                utterance.rate = 0.95;
+                window.speechSynthesis.speak(utterance);
+            } catch(e) {
+                console.error("Fallo al reproducir voz:", e);
+            }
         }
 
-        // VIBRACIÓN HÁPTICA COMPATIBLE
+        // VIBRACIÓN HÁPTICA
         function triggerHapticVibration(pattern) {
             if (navigator.vibrate) {
                 navigator.vibrate(pattern);
             }
         }
-
-        // INICIALIZACIÓN
-        document.addEventListener('DOMContentLoaded', () => {
-            toggleConfigFields();
-            loadPresetWords();
-            checkUrlInviteParams(); 
-
-            // Registrar oyente táctil para el minijuego Bingo Bird
-            lobbyGameCanvas = document.getElementById('lobby-game-canvas');
-            lobbyGameCtx = lobbyGameCanvas.getContext('2d');
-            lobbyGameCanvas.addEventListener('mousedown', handleLobbyGameClick);
-            lobbyGameCanvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                handleLobbyGameClick();
-            });
-        });
 
         // NAVEGACIÓN ENTRE VISTAS
         function switchView(viewId) {
@@ -834,23 +886,23 @@
             });
             document.getElementById(viewId).classList.remove('hidden');
 
-            // Detener o arrancar el minijuego según la sección en la que esté el jugador
             if (viewId === 'view-player-lobby') {
-                startLobbyGame();
+                startDrumAnimation();
             } else {
-                stopLobbyGame();
+                stopDrumAnimation();
             }
         }
 
-        // CONTROL DE SALIDA MANUAL DEL JUEGO (BOTÓN ESCAPE)
+        // CONTROL DE SALIDA MANUAL
         function confirmExitGame() {
             showCustomConfirm("Salir del Juego", "¿Estás seguro de que deseas salir al menú principal? Perderás tu progreso actual.", () => {
                 stopAutoDraw();
+                safelyUnsubscribeCurrent();
                 location.reload();
             });
         }
 
-        // ACTIVADOR DE ADMINISTRADOR OCULTO (5 toques en el título principal)
+        // ACTIVADOR DE ADMINISTRADOR OCULTO (5 toques en el título)
         function handleTitleTap() {
             titleTapCount++;
             if (titleTapCount >= 5) {
@@ -860,18 +912,18 @@
             }
         }
 
-        // PRELLENAR CÓDIGO POR QR / ENLACE DE INVITACIÓN
+        // PRELLENAR CÓDIGO POR QR / ENLACE
         function checkUrlInviteParams() {
             const params = new URLSearchParams(window.location.search);
             const sala = params.get('sala');
             if (sala) {
                 switchView('view-player-join');
                 document.getElementById('join-room-code').value = sala.toUpperCase();
-                showToast(`Código de sala "${sala}" cargado automáticamente.`);
+                showToast(`Código de sala "${sala}" cargado.`);
             }
         }
 
-        // FUNCIÓN CONTROLADORA DE SCROLL MANUAL CON FLECHAS
+        // SCROLL MANUAL CON FLECHAS
         function scrollContainer(containerId, direction, amount = 100) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -912,7 +964,7 @@
             }
         }
 
-        // GENERAR UN CÓDIGO DE SALA ALEATORIO
+        // GENERAR UN CÓDIGO DE SALA
         function generateRandomCode() {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             let code = '';
@@ -932,7 +984,7 @@
             }, 3000);
         }
 
-        // FUNCIÓN AUXILIAR DE CIFRADO DEL CLIENTE (SHA-256)
+        // CIFRADO SHA-256
         async function hashPassword(password) {
             const encoder = new TextEncoder();
             const data = encoder.encode(password);
@@ -942,9 +994,8 @@
         }
 
         // ==========================================
-        // SECCIÓN: AUTENTICACIÓN CON BASE DE DATOS (SUPABASE)
+        // AUTENTICACIÓN CON BASE DE DATOS (SUPABASE)
         // ==========================================
-
         function toggleAuthMode() {
             const toggleBtn = document.getElementById('btn-auth-toggle');
             const submitBtn = document.getElementById('btn-auth-submit');
@@ -983,7 +1034,6 @@
             }
 
             try {
-                // Cifrado local de contraseña
                 const contrasenaCifrada = await hashPassword(contrasenaPlana);
 
                 if (gameState.authMode === 'register') {
@@ -1002,7 +1052,6 @@
                         return;
                     }
 
-                    // Insertar en Supabase
                     const { error: insertError } = await supabaseClient
                         .from('bingo_administradores')
                         .insert([
@@ -1019,7 +1068,6 @@
                     gameState.authMode = 'register';
                     toggleAuthMode(); 
                 } else {
-                    // Consultar credenciales cifradas en Supabase
                     const { data, error: loginError } = await supabaseClient
                         .from('bingo_administradores')
                         .select('*')
@@ -1037,16 +1085,14 @@
                     }
                 }
             } catch (err) {
-                console.error("Error detallado de autenticación:", err);
-                const exactMsg = err.message || err.details || JSON.stringify(err);
-                showToast(`Fallo: ${exactMsg}`);
+                console.error("Error de autenticación:", err);
+                showToast("Fallo al autenticar.");
             }
         }
 
         // ==========================================
-        // SECCIÓN: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS - TABLA VISUAL)
+        // PANEL DE SALAS (ADMINISTRADOR)
         // ==========================================
-
         async function loadAdminDashboard() {
             try {
                 const { data: salas, error } = await supabaseClient
@@ -1063,7 +1109,7 @@
                     tableBody.innerHTML = `
                         <tr>
                             <td colspan="5" class="p-8 text-center text-gray-500 italic">
-                                No tienes salas creadas en Supabase. Haz clic en "+ Crear Sala" arriba para iniciar una.
+                                No tienes salas creadas. Haz clic en "+ Crear Sala" arriba.
                             </td>
                         </tr>`;
                 } else {
@@ -1102,7 +1148,7 @@
                 switchView('view-admin-dashboard');
 
             } catch (err) {
-                console.error("Error al cargar salas del panel:", err);
+                console.error("Error al cargar salas:", err);
                 showToast("Error al obtener la lista de salas.");
             }
         }
@@ -1125,7 +1171,7 @@
                 gameState.rows = juego.filas;
                 gameState.cols = juego.columnas;
                 gameState.role = 'admin';
-                
+                gameState.configuracion = juego.configuracion || {}; // Guarda la config para evitar pérdida de datos
                 gameState.adminWantsToPlay = (juego.configuracion?.admin_juega !== false);
 
                 let basePool = [];
@@ -1174,7 +1220,7 @@
         }
 
         async function deleteAdminRoom(roomId) {
-            showCustomConfirm("Eliminar Sala", "¿Estás seguro de que deseas eliminar esta sala de forma permanente? Se desconectarán todos los jugadores.", async () => {
+            showCustomConfirm("Eliminar Sala", "¿Estás seguro de que deseas eliminar esta sala permanentemente?", async () => {
                 try {
                     const { error } = await supabaseClient
                         .from('bingo_juegos')
@@ -1183,7 +1229,7 @@
 
                     if (error) throw error;
 
-                    showToast("Sala eliminada del servidor.");
+                    showToast("Sala eliminada.");
                     loadAdminDashboard(); 
                 } catch (err) {
                     console.error(err);
@@ -1194,13 +1240,13 @@
 
         function returnToDashboardFromPlay() {
             stopAutoDraw();
+            safelyUnsubscribeCurrent();
             loadAdminDashboard();
         }
 
         // ==========================================
-        // SECCIÓN: LÓGICA DEL ADMINISTRADOR (CONFIGURACIÓN)
+        // CREACIÓN DE SALAS (ADMINISTRADOR)
         // ==========================================
-
         async function createGameSession() {
             const type = document.getElementById('admin-game-type').value;
             const rows = parseInt(document.getElementById('admin-rows').value) || 5;
@@ -1222,7 +1268,7 @@
                     return;
                 }
                 if (poolSize < gridSize) {
-                    showToast(`Se necesitan al menos ${gridSize} números en el rango para llenar el cartón`);
+                    showToast(`Se necesitan al menos ${gridSize} números en el rango.`);
                     return;
                 }
                 configData = { min, max, admin_juega: adminPlays };
@@ -1234,7 +1280,7 @@
                 const words = text.split(',').map(w => w.trim()).filter(w => w.length > 0);
                 
                 if (words.length < gridSize) {
-                    showToast(`Se necesitan al menos ${gridSize} palabras para una cuadrícula de ${rows}x${cols}`);
+                    showToast(`Se necesitan al menos ${gridSize} palabras.`);
                     return;
                 }
                 configData = { palabras: words, admin_juega: adminPlays };
@@ -1268,19 +1314,18 @@
                 gameState.cols = cols;
                 gameState.role = 'admin';
                 gameState.adminWantsToPlay = adminPlays;
+                gameState.configuracion = configData; // Almacenado de seguridad
 
                 setupLobbyInviteUI(roomCode);
                 switchView('view-admin-lobby');
                 
                 listenToPlayers();
             } catch (err) {
-                console.error("Error al crear sesión de juego:", err);
-                const exactMsg = err.message || err.details || JSON.stringify(err);
-                showToast(`Fallo al crear juego: ${exactMsg}`);
+                console.error("Error al crear sesión:", err);
+                showToast("Fallo al crear juego.");
             }
         }
 
-        // AUTOGENERACIÓN DE QR E INVITACIÓN AL LOBBY
         function setupLobbyInviteUI(roomCode) {
             document.getElementById('lobby-code-display').textContent = roomCode;
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${roomCode}`;
@@ -1288,26 +1333,23 @@
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inviteUrl)}`;
         }
 
-        // COPIAR LINK DIRECTO AL PORTAPAPELES
         function copyInviteLink() {
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
-            const message = `¡Únete a mi partida de Bingo Realtime! Código de sala: ${gameState.gameCode}. Ingresa aquí de forma directa: ${inviteUrl}`;
+            const message = `¡Únete a mi partida de Bingo! Código: ${gameState.gameCode}. Enlace: ${inviteUrl}`;
             
             navigator.clipboard.writeText(message)
-                .then(() => showToast("Invitación copiada al portapapeles."))
-                .catch(() => showToast("Error al copiar invitación."));
+                .then(() => showToast("Invitación copiada."))
+                .catch(() => showToast("Error al copiar enlace."));
         }
 
-        // COMPARTIR POR WHATSAPP
         function shareOnWhatsApp() {
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
-            const message = `¡Únete a mi partida de Bingo Realtime! Código de sala: ${gameState.gameCode}. Ingresa aquí: ${inviteUrl}`;
-            
+            const message = `¡Únete a mi partida de Bingo! Código: ${gameState.gameCode}. Enlace: ${inviteUrl}`;
             const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
             window.open(waUrl, '_blank');
         }
 
-        // CONTROL DE PESTAÑAS DEL ADMINISTRADOR (PANEL DE JUEGO)
+        // CONTROL DE PESTAÑAS (ADMINISTRADOR)
         function switchAdminTab(tabName) {
             const tabBoard = document.getElementById('tab-admin-board');
             const tabCard = document.getElementById('tab-admin-card');
@@ -1343,7 +1385,6 @@
             }
         }
 
-        // GENERADOR DE CARTÓN ÚNICO PARA EL ADMINISTRADOR
         function generateAdminCard() {
             const totalCells = gameState.rows * gameState.cols;
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -1399,24 +1440,21 @@
                     btn.textContent = val;
 
                     btn.onclick = () => {
-                        const cellIndex = index;
                         const cellValue = val;
-                        
                         const isCalled = gameState.calledElements.includes(cellValue);
                         if (!isCalled) {
                             showToast(`"${cellValue}" aún no ha sido extraído.`);
                             return; 
                         }
 
-                        // Reproducir sonido de clic de sintetizador
                         synth.playClick();
 
-                        if (gameState.adminMarkedIndices.includes(cellIndex)) {
-                            gameState.adminMarkedIndices = gameState.adminMarkedIndices.filter(i => i !== cellIndex);
+                        if (gameState.adminMarkedIndices.includes(index)) {
+                            gameState.adminMarkedIndices = gameState.adminMarkedIndices.filter(i => i !== index);
                             btn.className = btn.className.replace(/bg-emerald-600|text-white|border-emerald-700|shadow-inner/g, '').trim();
                             btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
                         } else {
-                            gameState.adminMarkedIndices.push(cellIndex);
+                            gameState.adminMarkedIndices.push(index);
                             btn.className = btn.className.replace(/bg-white|hover:bg-gray-50|text-gray-700|border-gray-300/g, '').trim();
                             btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
                         }
@@ -1428,7 +1466,6 @@
             });
         }
 
-        // COMPROBACIÓN AUTOMÁTICA DE VICTORIA PARA ADMINISTRADOR
         function checkAdminBingoCondition() {
             const totalCells = gameState.rows * gameState.cols;
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -1439,11 +1476,13 @@
 
             if (validMarksCount >= targetCount) {
                 synth.playVictory();
-                showToast("¡Felicidades! Has completado tu cartón de Administrador.");
+                showToast("¡Has completado tu cartón!");
             }
         }
 
         function listenToPlayers() {
+            safelyUnsubscribeCurrent();
+
             gameState.realtimeSubscription = supabaseClient
                 .channel('lobby-updates')
                 .on('postgres_changes', { 
@@ -1504,9 +1543,7 @@
                 return;
             }
 
-            if (gameState.realtimeSubscription) {
-                supabaseClient.removeChannel(gameState.realtimeSubscription);
-            }
+            safelyUnsubscribeCurrent();
 
             setupAdminGameBoard();
             switchView('view-admin-play');
@@ -1528,7 +1565,6 @@
             });
         }
 
-        // CONTROL AUTOMÁTICO EN EL ADMINISTRADOR
         function toggleAutoMode() {
             const isAuto = document.getElementById('admin-auto-toggle').checked;
             const intervalInput = document.getElementById('admin-auto-interval');
@@ -1596,7 +1632,6 @@
             const chosen = pool[Math.floor(Math.random() * pool.length)];
             gameState.calledElements.push(chosen);
 
-            // SINTETIZADOR: Reproducir sonido de tómbola y hablar por altavoz si está activo
             synth.playCall();
             speakText(`Próximo elemento llamado, ${chosen}`);
 
@@ -1619,11 +1654,12 @@
             }
         }
 
-        // Monitoreo en tiempo real de progresos y de ganadores unificado en un solo canal
         let playersCardsCache = {}; 
 
         function listenToWinners() {
-            supabaseClient
+            safelyUnsubscribeCurrent();
+
+            gameState.realtimeSubscription = supabaseClient
                 .channel('admin-room-updates')
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
@@ -1635,15 +1671,17 @@
 
                         if (payload.new.es_ganador) {
                             stopAutoDraw();
-                            document.getElementById('btn-verify-winner').classList.remove('hidden');
-                            document.getElementById('btn-draw').classList.add('w-2/3');
                             
-                            // REGISTRAR ORDEN DE LLEGADA DE GANADORES PARA MEDALLERO
+                            const btnVerify = document.getElementById('btn-verify-winner');
+                            const btnDraw = document.getElementById('btn-draw');
+                            btnVerify.classList.remove('hidden');
+                            btnDraw.classList.remove('w-full');
+                            btnDraw.classList.add('w-2/3');
+                            
                             if (!gameState.winnerRegistry.includes(payload.new.id)) {
                                 gameState.winnerRegistry.push(payload.new.id);
                             }
 
-                            // SINTETIZADOR: Fanfarria de Bingo Reclamado
                             synth.playVictory();
                             triggerHapticVibration([100, 50, 100, 50, 300]);
                             showToast(`¡BINGO! Reclamo de ${payload.new.nombre}`);
@@ -1670,7 +1708,6 @@
             updatePlayersProgressList();
         }
 
-        // MONITOREO CRUZADO EN TIEMPO REAL
         async function updatePlayersProgressList() {
             try {
                 const { data: jugadores, error: errJ } = await supabaseClient
@@ -1688,7 +1725,6 @@
                     return;
                 }
 
-                // Obtener matrices de cartones para cruce matemático si no están en caché
                 const missingCardPlayerIds = jugadores
                     .filter(j => !playersCardsCache[j.id])
                     .map(j => j.id);
@@ -1714,7 +1750,7 @@
                     const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
                     const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
                     
-                    // Contar aciertos reales (cuántos elementos de su matriz YA salieron de la tómbola)
+                    // Contar aciertos reales
                     const aciertosReales = matriz.filter((val, index) => {
                         if (index === centerIndex && hasOddDimension) return false; 
                         return gameState.calledElements.includes(val);
@@ -1740,14 +1776,16 @@
                         statusText = medals[positionIndex] || `🏅 Ganador #${positionIndex + 1}`;
                         statusClass = 'bg-green-100 text-green-800 animate-pulse';
                     } else if (mathematicallyHasBingo) {
-                        statusText = '⚠️ ¡TIENE BINGO! (Sin cantar)';
-                        statusClass = 'bg-red-100 text-red-800 font-black animate-pulse';
+                        // DETECTA BINGO NO RECLAMADO
+                        statusText = '⚠️ ¡TIENE BINGO! (Sin reclamar)';
+                        statusClass = 'bg-red-100 text-red-700 font-bold animate-pulse border border-red-400';
                     } else if (isMissingOnlyOne) {
                         statusText = `⚡ ¡Falta 1! (${aciertosReales} aciertos)`;
                         statusClass = 'bg-yellow-100 text-yellow-800';
                     }
 
                     return {
+                        id: jugador.id,
                         nombre: jugador.nombre,
                         statusText,
                         statusClass,
@@ -1759,7 +1797,10 @@
 
                 progressData.forEach(player => {
                     const div = document.createElement('div');
-                    div.className = 'flex justify-between items-center py-1 border-b border-blue-100 last:border-b-0';
+                    div.className = 'flex justify-between items-center py-1 border-b border-blue-100 last:border-b-0 cursor-pointer hover:bg-blue-50 p-1.5 rounded transition';
+                    div.title = "Haz clic para inspeccionar el cartón de este jugador";
+                    div.onclick = () => inspectPlayerCard(player.id, player.nombre);
+                    
                     div.innerHTML = `
                         <span class="font-medium text-gray-700">👤 ${player.nombre}</span>
                         <span class="font-bold px-2 py-0.5 rounded text-[10px] ${player.statusClass}">
@@ -1771,6 +1812,68 @@
             } catch (err) {
                 console.error("Fallo al actualizar monitoreo:", err);
             }
+        }
+
+        // INSPECTOR DEL CARTÓN DEL JUGADOR DESDE LA VISTA DEL ADMIN
+        function inspectPlayerCard(playerId, playerName) {
+            const matrix = playersCardsCache[playerId];
+            if (!matrix) {
+                showToast("No se ha cargado la matriz del jugador aún.");
+                return;
+            }
+
+            // Consultar casillas marcadas activas de la cache del jugador
+            supabaseClient
+                .from('bingo_jugadores')
+                .select('casillas_marcadas')
+                .eq('id', playerId)
+                .single()
+                .then(({ data }) => {
+                    const marked = data?.casillas_marcadas || [];
+                    
+                    document.getElementById('inspect-title').textContent = `Cartón de ${playerName}`;
+                    const grid = document.getElementById('inspect-grid');
+                    grid.innerHTML = '';
+                    grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
+
+                    const isOdd = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+                    const centerIndex = isOdd ? Math.floor((gameState.rows * gameState.cols) / 2) : -1;
+
+                    matrix.forEach((val, index) => {
+                        const cell = document.createElement('div');
+                        cell.className = 'aspect-square flex items-center justify-center border text-[10px] font-bold rounded shadow-sm text-center p-1 overflow-hidden';
+                        cell.textContent = val;
+
+                        if (index === centerIndex && isOdd) {
+                            cell.className += ' bg-green-500 text-white border-green-600';
+                            cell.textContent = 'LIBRE';
+                        } else {
+                            const isCalled = gameState.calledElements.includes(val);
+                            const isMarked = marked.includes(index);
+
+                            if (isCalled && isMarked) {
+                                // Acierto verificado
+                                cell.className += ' bg-green-100 text-green-800 border-green-400';
+                            } else if (isCalled && !isMarked) {
+                                // Balota cantada pero no marcada por el jugador
+                                cell.className += ' bg-yellow-100 text-yellow-800 border-yellow-400';
+                            } else if (!isCalled && isMarked) {
+                                // ¡TRAMPA o ERROR! Casilla marcada sin haber sido llamada
+                                cell.className += ' bg-red-100 text-red-800 border-red-400';
+                            } else {
+                                // Casilla inactiva normal
+                                cell.className += ' bg-white text-gray-400 border-gray-200';
+                            }
+                        }
+                        grid.appendChild(cell);
+                    });
+
+                    document.getElementById('player-inspect-modal').classList.remove('hidden');
+                });
+        }
+
+        function closeInspectModal() {
+            document.getElementById('player-inspect-modal').classList.add('hidden');
         }
 
         async function handleManualVerification() {
@@ -1797,7 +1900,6 @@
             const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
             const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
             
-            // 1. Verificación Matemática Real (Contar cuántos aciertos tiene de verdad en el cartón)
             const aciertosRealesCount = matriz.filter((val, index) => {
                 if (index === centerIndex && hasOddDimension) return false;
                 return gameState.calledElements.includes(val);
@@ -1807,23 +1909,21 @@
             const esBingoLegitimo = (aciertosRealesCount >= targetCellsCount);
 
             if (esBingoLegitimo) {
-                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos. ¿Confirmar su victoria y dar por finalizada la sesión?`, async () => {
+                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos. ¿Confirmar victoria y finalizar partida?`, async () => {
                     await supabaseClient
                         .from('bingo_juegos')
                         .update({ estado: 'finalizado' })
                         .eq('id', gameState.gameId);
                 });
             } else {
-                // EL JUGADOR TRATÓ DE HACER TRAMPA (O SE EQUIVOCÓ AL MARCAR)
-                synth.playBuzzer(); // Zumbido de error en el Administrador
-                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es FALSO (Solo tiene ${aciertosRealesCount} aciertos de ${targetCellsCount} requeridos). ¿Rechazar su reclamo y descalificarlo temporalmente para seguir jugando?`, async () => {
-                    // Resetear es_ganador en Supabase para el jugador tramposo
+                synth.playBuzzer(); 
+                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es INCORRECTO (${aciertosRealesCount} de ${targetCellsCount} aciertos). ¿Rechazar y reanudar la partida?`, async () => {
                     await supabaseClient
                         .from('bingo_jugadores')
                         .update({ es_ganador: false })
                         .eq('id', jugador.id);
 
-                    // Escribir en la configuración de la sala el aviso de bingo falso para transmitirlo a todos en tiempo real
+                    // Conservación matemática de la configuración original (Corrección de Bug Crítico)
                     let updatedConfig = { ...gameState.configuracion, ultimo_tramposo: jugador.nombre, rechazo_time: Date.now() };
                     
                     await supabaseClient
@@ -1831,20 +1931,22 @@
                         .update({ configuracion: updatedConfig })
                         .eq('id', gameState.gameId);
 
-                    // Resetear panel admin
-                    document.getElementById('btn-verify-winner').classList.add('hidden');
-                    document.getElementById('btn-draw').className = "bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-bold text-lg shadow transition w-full";
+                    // Revertir estados de botones sin romper estilos de variables CSS
+                    const btnVerify = document.getElementById('btn-verify-winner');
+                    const btnDraw = document.getElementById('btn-draw');
+                    btnVerify.classList.add('hidden');
+                    btnDraw.classList.remove('w-2/3');
+                    btnDraw.classList.add('w-full');
                     
-                    showToast(`Reclamo de ${jugador.nombre} rechazado por falso.`);
+                    showToast(`Reclamo de ${jugador.nombre} rechazado.`);
                     updatePlayersProgressList();
                 });
             }
         }
 
         // ==========================================
-        // SECCIÓN: LÓGICA DEL JUGADOR
+        // LÓGICA DEL JUGADOR
         // ==========================================
-
         async function joinGame() {
             const roomCode = document.getElementById('join-room-code').value.toUpperCase().trim();
             const playerName = document.getElementById('join-player-name').value.trim();
@@ -1877,6 +1979,7 @@
                 gameState.rows = juego.filas;
                 gameState.cols = juego.columnas;
                 gameState.role = 'player';
+                gameState.configuracion = juego.configuracion || {};
                 
                 const totalCells = juego.filas * juego.columnas;
                 const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
@@ -1914,7 +2017,7 @@
 
                     listenToGameStart();
                     updatePlayerCalledElements(juego.elementos_llamados);
-                    showToast("Sesión y cartón recuperados de la sala.");
+                    showToast("Sesión recuperada.");
                     return; 
                 }
 
@@ -1981,6 +2084,7 @@
             }
         }
 
+        // SESIÓN EN SESSION_STORAGE (Permite múltiples ventanas sin cruces)
         function savePlayerSessionToLocalStorage() {
             const sessionData = {
                 gameId: gameState.gameId,
@@ -1990,13 +2094,14 @@
                 cardMatrix: gameState.cardMatrix,
                 markedIndices: gameState.markedIndices,
                 rows: gameState.rows,
-                cols: gameState.cols
+                cols: gameState.cols,
+                configuracion: gameState.configuracion
             };
-            localStorage.setItem('bingo_player_session', JSON.stringify(sessionData));
+            sessionStorage.setItem('bingo_player_session', JSON.stringify(sessionData));
         }
 
         async function checkRestoreSessions() {
-            const rawPlayerSession = localStorage.getItem('bingo_player_session');
+            const rawPlayerSession = sessionStorage.getItem('bingo_player_session');
 
             if (rawPlayerSession) {
                 try {
@@ -2009,7 +2114,7 @@
                         .single();
 
                     if (error || !juego || juego.estado === 'finalizado') {
-                        localStorage.removeItem('bingo_player_session');
+                        sessionStorage.removeItem('bingo_player_session');
                         return;
                     }
 
@@ -2021,6 +2126,7 @@
                     gameState.markedIndices = session.markedIndices || [];
                     gameState.rows = session.rows;
                     gameState.cols = session.cols;
+                    gameState.configuracion = session.configuracion || juego.configuracion || {};
                     gameState.role = 'player';
 
                     if (juego.estado === 'esperando') {
@@ -2035,16 +2141,17 @@
                     updatePlayerCalledElements(juego.elementos_llamados);
 
                 } catch (e) {
-                    console.error("Error al restaurar sesión de jugador:", e);
-                    localStorage.removeItem('bingo_player_session');
+                    console.error("Error al restaurar sesión:", e);
+                    sessionStorage.removeItem('bingo_player_session');
                 }
             }
         }
 
-        // ESCRUCHADOR EN TIEMPO REAL: Soporta notificaciones flotantes de bingo falso
         let lastProcessedRejectionTime = null;
 
         function listenToGameStart() {
+            safelyUnsubscribeCurrent();
+
             gameState.realtimeSubscription = supabaseClient
                 .channel('game-state-updates')
                 .on('postgres_changes', { 
@@ -2055,33 +2162,33 @@
                     if (payload.new.id === gameState.gameId) {
                         const juego = payload.new;
                         
-                        // 1. Validar si el juego pasó a 'jugando'
                         if (juego.estado === 'jugando' && document.getElementById('view-player-play').classList.contains('hidden')) {
                             startGameForPlayer();
                         }
                         
-                        // 2. Validar si el juego finalizó (Victoria confirmada)
                         if (juego.estado === 'finalizado') {
                             displayGameWinnerOverlay();
                         }
 
-                        // 3. Validar si se reportó un reclamo de BINGO FALSO
+                        // ALERTA DE BINGO FALSO (BROADCAST EN TIEMPO REAL)
                         const config = juego.configuracion || {};
                         if (config.ultimo_tramposo && config.rechazo_time !== lastProcessedRejectionTime) {
                             lastProcessedRejectionTime = config.rechazo_time;
                             
-                            // Emitir zumbido táctil y mostrar diálogo flotante personalizado
+                            // Reproducir sad trombone en todos los dispositivos
                             synth.playBuzzer();
                             triggerHapticVibration([300, 100, 300]);
                             
                             showCustomAlert(
-                                "RECLAMO DE BINGO FALSO ❌", 
-                                `El jugador "${config.ultimo_tramposo}" reclamó un BINGO falso. ¡La partida continúa y se reanuda la tómbola!`
+                                "FALSO RECLAMO DE BINGO ❌", 
+                                `El jugador "${config.ultimo_tramposo}" cantó un Bingo erróneo. ¡La partida se reanuda!`
                             );
                             
-                            // Re-sincronizar marcas locales por si el descalificado era el propio cliente local
+                            // Limpiar cartón del descalificado si es él mismo
                             if (gameState.playerName === config.ultimo_tramposo) {
-                                gameState.markedIndices = [12]; // resetear a solo libre
+                                const isOdd = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+                                const centerIndex = isOdd ? Math.floor((gameState.rows * gameState.cols) / 2) : -1;
+                                gameState.markedIndices = isOdd ? [centerIndex] : [];
                                 buildPlayerCardUI();
                                 syncPlayerMarksToDatabase();
                             }
@@ -2095,7 +2202,6 @@
 
         async function displayGameWinnerOverlay() {
             try {
-                // Obtener todos los ganadores reales de Supabase
                 const { data: ganadores, error } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('nombre')
@@ -2108,17 +2214,14 @@
                 }
 
                 document.getElementById('winner-announcement').textContent = `🏆 ${winnerText} 🏆`;
-                
-                // Mostrar telón de celebración a pantalla completa para todos
                 document.getElementById('celebration-overlay').classList.remove('hidden');
                 
                 synth.playVictory();
                 triggerHapticVibration([500, 100, 500, 100, 1000]);
                 startCelebration();
 
-                localStorage.removeItem('bingo_player_session');
+                sessionStorage.removeItem('bingo_player_session');
 
-                // Terminar tras 8 segundos de luces y confeti
                 setTimeout(() => {
                     location.reload();
                 }, 8000);
@@ -2140,7 +2243,6 @@
         function buildPlayerCardUI() {
             const grid = document.getElementById('player-card-grid');
             grid.innerHTML = '';
-            
             grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
 
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -2151,13 +2253,12 @@
                 btn.id = `player-cell-${index}`;
                 btn.className = 'flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
                 
-                // Ajustar relaciones de tamaño dinámico
                 btn.className += ` ${getWordFontSizeClass(val)}`;
                 
                 if (gameState.cols > 4) {
                     btn.classList.add('aspect-square');
                 } else {
-                    btn.classList.add('py-3.5'); // Hacer casillas rectangulares si hay pocas columnas
+                    btn.classList.add('py-3.5'); 
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -2173,37 +2274,30 @@
                     
                     btn.textContent = val;
                     btn.onclick = async () => {
-                        const cellIndex = index;
                         const cellValue = val;
 
-                        // SEGURIDAD ANTI-TRAMPAS: Evitar que el jugador marque casillas no extraídas
                         const isCalled = gameState.calledElements.includes(cellValue);
                         if (!isCalled) {
-                            showToast(`"${cellValue}" aún no ha sido extraído por el Administrador.`);
-                            synth.playBuzzer(); // Zumbido táctil local de error
+                            showToast(`"${cellValue}" aún no ha sido extraído.`);
+                            synth.playBuzzer(); 
                             return; 
                         }
 
-                        // Reproducir sonido táctil sintetizado de clic
                         synth.playClick();
-                        triggerHapticVibration(50); // Vibración corta de marcado
+                        triggerHapticVibration(50); 
 
-                        if (gameState.markedIndices.includes(cellIndex)) {
-                            gameState.markedIndices = gameState.markedIndices.filter(i => i !== cellIndex);
+                        if (gameState.markedIndices.includes(index)) {
+                            gameState.markedIndices = gameState.markedIndices.filter(i => i !== index);
                             btn.className = btn.className.replace(/bg-emerald-600|text-white|border-emerald-700|shadow-inner/g, '').trim();
                             btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
                         } else {
-                            gameState.markedIndices.push(cellIndex);
+                            gameState.markedIndices.push(index);
                             btn.className = btn.className.replace(/bg-white|hover:bg-gray-50|text-gray-700|border-gray-300/g, '').trim();
                             btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
                         }
                         
                         savePlayerSessionToLocalStorage();
-                        
-                        // Sincronizar marcas a Supabase al instante para monitoreo del Administrador
                         await syncPlayerMarksToDatabase();
-
-                        // AUTOMATIZACIÓN DE VICTORIA DEL JUGADOR
                         checkPlayerBingoCondition();
                     };
                 }
@@ -2211,7 +2305,6 @@
             });
         }
 
-        // REDIMENSIONADOR DINÁMICO DE FUENTES PARA PALABRAS LARGAS
         function getWordFontSizeClass(val) {
             const len = val.length;
             if (gameState.cols > 4) {
@@ -2225,7 +2318,6 @@
             }
         }
 
-        // COMPROBACIÓN AUTOMÁTICA DE VICTORIA PARA JUGADORES (Cantar Bingo automático)
         function checkPlayerBingoCondition() {
             const totalCells = gameState.rows * gameState.cols;
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -2239,7 +2331,6 @@
             }
         }
 
-        // Sincronizar las casillas marcadas a Supabase en tiempo real
         async function syncPlayerMarksToDatabase() {
             try {
                 await supabaseClient
@@ -2277,7 +2368,6 @@
 
             document.getElementById('player-called-display').textContent = last;
             
-            // 1. Mostrar historial deslizable (elementos recientes descartando el actual)
             historyList.innerHTML = '';
             const history = [...calledArray].reverse().slice(1);
 
@@ -2292,7 +2382,6 @@
                 });
             }
 
-            // 2. TABLERO DE CONTROL COMPLETO: Mostrar TODOS los llamados sin exclusiones
             allCalledContainer.innerHTML = '';
             [...calledArray].forEach(item => {
                 const badge = document.createElement('span');
@@ -2301,7 +2390,6 @@
                 allCalledContainer.appendChild(badge);
             });
 
-            // 3. Notificación de presencia en cartón y vibración correspondiente
             const matchedIndex = gameState.cardMatrix.indexOf(last);
             if (matchedIndex !== -1) {
                 const totalCells = gameState.rows * gameState.cols;
@@ -2309,8 +2397,8 @@
                 const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
                 
                 if (matchedIndex !== centerIndex) {
-                    showToast(`¡Tienes "${last}" en tu cartón!`);
-                    triggerHapticVibration([50, 50, 50]); // Vibración doble corta
+                    showToast(`¡Tienes "${last}"!`);
+                    triggerHapticVibration([50, 50, 50]); 
                 }
             }
         }
@@ -2325,147 +2413,131 @@
                 showToast('Error al cantar Bingo');
             } else {
                 startCelebration(); 
-                showToast('¡Has reclamado Bingo! Esperando confirmación del Administrador.');
+                showToast('¡Has reclamado Bingo! Esperando verificación.');
             }
         }
 
         // ==========================================
-        // SECCIÓN: MOTOR DE MINIJUEGO "BINGO BIRD" (Para Lobby de Espera del Jugador)
+        // ANIMACIÓN DE TÓMBOLA / CAGE DE BINGO
         // ==========================================
-
-        function startLobbyGame() {
-            bird = { x: 45, y: 50, radius: 7, velocity: 0, gravity: 0.22, jumpForce: -4 };
-            pipes = [];
-            gameScore = 0;
-            isLobbyGameOver = false;
-            document.getElementById('game-score-display').textContent = '0';
+        function startDrumAnimation() {
+            drumCanvas.width = drumCanvas.offsetWidth;
+            drumCanvas.height = drumCanvas.offsetHeight;
             
-            lobbyGameCanvas.width = lobbyGameCanvas.offsetWidth;
-            lobbyGameCanvas.height = lobbyGameCanvas.offsetHeight;
-
-            if (lobbyGameIntervalId) clearInterval(lobbyGameIntervalId);
-            lobbyGameIntervalId = setInterval(updateLobbyGame, 1000 / 60);
-        }
-
-        function stopLobbyGame() {
-            if (lobbyGameIntervalId) {
-                clearInterval(lobbyGameIntervalId);
-                lobbyGameIntervalId = null;
-            }
-        }
-
-        function resetLobbyGame() {
-            stopLobbyGame();
-            startLobbyGame();
-        }
-
-        function handleLobbyGameClick() {
-            if (isLobbyGameOver) {
-                resetLobbyGame();
-            } else {
-                bird.velocity = bird.jumpForce;
-                synth.playJump(); // Sonido sintetizado de salto
-            }
-        }
-
-        function updateLobbyGame() {
-            bird.velocity += bird.gravity;
-            bird.y += bird.velocity;
-
-            if (bird.y + bird.radius > lobbyGameCanvas.height) {
-                bird.y = lobbyGameCanvas.height - bird.radius;
-                endLobbyGame();
-            }
-            if (bird.y - bird.radius < 0) {
-                bird.y = bird.radius;
-                bird.velocity = 0;
-            }
-
-            if (pipes.length === 0 || pipes[pipes.length - 1].x < lobbyGameCanvas.width - 95) {
-                const gap = 38; 
-                const minHeight = 15;
-                const maxHeight = lobbyGameCanvas.height - gap - minHeight;
-                const topHeight = Math.floor(Math.random() * (maxHeight - minHeight)) + minHeight;
-
-                pipes.push({
-                    x: lobbyGameCanvas.width,
-                    top: topHeight,
-                    bottom: topHeight + gap,
-                    width: 14,
-                    passed: false
+            drumBalls = [];
+            const colors = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+            
+            for (let i = 0; i < 15; i++) {
+                drumBalls.push({
+                    x: drumCanvas.width / 2 + (Math.random() * 40 - 20),
+                    y: drumCanvas.height / 2 + (Math.random() * 40 - 20),
+                    vx: Math.random() * 3 - 1.5,
+                    vy: Math.random() * 3 - 1.5,
+                    radius: 7,
+                    color: colors[i % colors.length]
                 });
             }
 
-            pipes.forEach(pipe => {
-                pipe.x -= 1.4; 
-
-                if (!pipe.passed && pipe.x + pipe.width < bird.x) {
-                    pipe.passed = true;
-                    gameScore++;
-                    document.getElementById('game-score-display').textContent = gameScore;
-                    synth.playClick(); // Sonido corto de punto superado
-                }
-
-                if (
-                    bird.x + bird.radius > pipe.x &&
-                    bird.x - bird.radius < pipe.x + pipe.width &&
-                    (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
-                ) {
-                    endLobbyGame();
-                }
-            });
-
-            pipes = pipes.filter(p => p.x + p.width > 0);
-
-            renderLobbyGame();
+            if (drumAnimFrameId) cancelAnimationFrame(drumAnimFrameId);
+            animateDrum();
         }
 
-        function renderLobbyGame() {
-            lobbyGameCtx.clearRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
-
-            pipes.forEach(pipe => {
-                lobbyGameCtx.fillStyle = '#10B981'; 
-                lobbyGameCtx.fillRect(pipe.x, 0, pipe.width, pipe.top);
-                lobbyGameCtx.fillRect(pipe.x, pipe.bottom, pipe.width, lobbyGameCanvas.height - pipe.bottom);
-            });
-
-            lobbyGameCtx.beginPath();
-            lobbyGameCtx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
-            lobbyGameCtx.fillStyle = '#3B82F6'; 
-            lobbyGameCtx.fill();
-            lobbyGameCtx.closePath();
-
-            lobbyGameCtx.fillStyle = '#FFFFFF';
-            lobbyGameCtx.font = 'bold 5px Arial';
-            lobbyGameCtx.textAlign = 'center';
-            lobbyGameCtx.fillText('75', bird.x, bird.y + 2);
-
-            if (isLobbyGameOver) {
-                lobbyGameCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-                lobbyGameCtx.fillRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
-
-                lobbyGameCtx.fillStyle = '#FFFFFF';
-                lobbyGameCtx.font = 'bold 12px sans-serif';
-                lobbyGameCtx.textAlign = 'center';
-                lobbyGameCtx.fillText('FIN DEL JUEGO', lobbyGameCanvas.width / 2, lobbyGameCanvas.height / 2 - 5);
-                
-                lobbyGameCtx.font = '8px sans-serif';
-                lobbyGameCtx.fillText('Toca aquí para reiniciar', lobbyGameCanvas.width / 2, lobbyGameCanvas.height / 2 + 10);
+        function stopDrumAnimation() {
+            if (drumAnimFrameId) {
+                cancelAnimationFrame(drumAnimFrameId);
+                drumAnimFrameId = null;
             }
         }
 
-        function endLobbyGame() {
-            isLobbyGameOver = true;
-            synth.playCrash(); // Sonido sintetizado de choque
-            triggerHapticVibration(150); // Vibración de colisión
-            stopLobbyGame();
-            renderLobbyGame();
+        function animateDrum() {
+            drumCtx.clearRect(0, 0, drumCanvas.width, drumCanvas.height);
+            
+            const centerX = drumCanvas.width / 2;
+            const centerY = drumCanvas.height / 2;
+            const cageRadius = Math.min(drumCanvas.width, drumCanvas.height) * 0.38;
+
+            // jaula exterior
+            drumCtx.strokeStyle = '#9ca3af';
+            drumCtx.lineWidth = 3;
+            drumCtx.beginPath();
+            drumCtx.arc(centerX, centerY, cageRadius, 0, Math.PI * 2);
+            drumCtx.stroke();
+
+            // soportes mecánicos
+            drumCtx.strokeStyle = '#6b7280';
+            drumCtx.lineWidth = 4;
+            drumCtx.beginPath();
+            drumCtx.moveTo(centerX - cageRadius - 10, centerY + cageRadius + 5);
+            drumCtx.lineTo(centerX - cageRadius + 5, centerY);
+            drumCtx.lineTo(centerX, centerY);
+            drumCtx.lineTo(centerX + cageRadius - 5, centerY);
+            drumCtx.lineTo(centerX + cageRadius + 10, centerY + cageRadius + 5);
+            drumCtx.stroke();
+
+            // líneas internas giratorias
+            drumAngle += 0.02;
+            drumCtx.strokeStyle = '#d1d5db';
+            drumCtx.lineWidth = 1;
+            for (let i = 0; i < 8; i++) {
+                const lineAngle = drumAngle + (i * Math.PI / 4);
+                drumCtx.beginPath();
+                drumCtx.moveTo(centerX, centerY);
+                drumCtx.lineTo(
+                    centerX + Math.cos(lineAngle) * cageRadius,
+                    centerY + Math.sin(lineAngle) * cageRadius
+                );
+                drumCtx.stroke();
+            }
+
+            // Balotas rebotando
+            drumSoundTicks++;
+            drumBalls.forEach(ball => {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                const dx = ball.x - centerX;
+                const dy = ball.y - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist + ball.radius > cageRadius) {
+                    const normalX = dx / dist;
+                    const normalY = dy / dist;
+
+                    ball.x = centerX + normalX * (cageRadius - ball.radius);
+                    ball.y = centerY + normalY * (cageRadius - ball.radius);
+
+                    const dot = ball.vx * normalX + ball.vy * normalY;
+                    ball.vx -= 2 * dot * normalX;
+                    ball.vy -= 2 * dot * normalY;
+
+                    ball.vx += -normalY * 0.5;
+                    ball.vy += normalX * 0.5;
+
+                    // Reproduce sonido rítmico de tómbola esporádicamente
+                    if (drumSoundTicks % 25 === 0 && Math.random() > 0.6) {
+                        synth.playTick();
+                    }
+                }
+
+                // Dibujar balota
+                drumCtx.beginPath();
+                drumCtx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                drumCtx.fillStyle = ball.color;
+                drumCtx.fill();
+                
+                // Brillo de balota 3D
+                drumCtx.beginPath();
+                drumCtx.arc(ball.x - 2, ball.y - 2, 2, 0, Math.PI * 2);
+                drumCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                drumCtx.fill();
+            });
+
+            drumAnimFrameId = requestAnimationFrame(animateDrum);
         }
 
         // ==========================================
-        // SECCIÓN: ANIMACIÓN DE CELEBRACIÓN APOTEÓSICA
+        // ANIMACIÓN DE CELEBRACIÓN APOTEÓSICA (CONFETI)
         // ==========================================
-
         const canvas = document.getElementById('confetti-canvas');
         const ctx = canvas.getContext('2d');
         let confetti = [];
