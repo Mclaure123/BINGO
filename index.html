@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bingo Realtime Pro - Multidimensión</title>
+    <!-- Tailwind CSS para diseño rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cliente de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* Ocultar barras de scroll globalmente */
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Animación de destello y escala para nuevas extracciones */
+        @keyframes glow-flash {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8);
+                background-color: rgba(239, 246, 255, 1);
+            }
+            30% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+                background-color: rgba(191, 219, 254, 1);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+                background-color: rgba(255, 255, 255, 1);
+            }
+        }
+        .animate-apoteosic {
+            animation: glow-flash 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* Confeti overlay de celebración */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 h-[100dvh] flex flex-col relative overflow-hidden select-none">
+
+    <!-- Canvas para animación de celebración apoteósica -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Overlay de victoria apoteósica coordinada -->
+    <div id="celebration-overlay" class="fixed inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center text-center p-6 hidden">
+        <div class="text-7xl mb-4 animate-bounce">🏆</div>
+        <h2 class="text-3xl font-black text-yellow-400 animate-pulse tracking-wide uppercase">¡BINGO CONFIRMADO!</h2>
+        <p class="text-white text-md mt-2">Felicitaciones al ganador de la partida:</p>
+        <p id="winner-announcement" class="text-green-400 font-bold text-2xl mt-4 bg-gray-800 px-6 py-3 rounded-xl border border-green-500 shadow">- - -</p>
+        <p class="text-gray-400 text-xs mt-10">Redireccionando al menú principal...</p>
+    </div>
+
+    <!-- Encabezado de la Aplicación -->
+    <header class="bg-blue-600 text-white p-3 shadow-md text-center z-10 flex justify-between items-center flex-shrink-0">
+        <div class="w-8"></div>
+        <div class="text-center">
+            <h1 class="text-xl font-bold">Bingo Realtime</h1>
+            <p class="text-[10px] opacity-90 font-medium font-mono">Soporte Multidimensión</p>
+        </div>
+        <button onclick="confirmExitGame()" class="text-white hover:text-red-200 p-1" title="Salir/Menú Principal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        </button>
+    </header>
+
+    <!-- Contenedor Principal (Contenido estrictamente escalado) -->
+    <main class="flex-grow p-2.5 max-w-md mx-auto w-full flex flex-col justify-between z-10 overflow-hidden">
+        
+        <!-- SECCIÓN 1: SELECCIÓN DE ROL (PANTALLA DE INICIO) -->
+        <div id="view-welcome" class="space-y-4 my-auto">
+            <div class="bg-white p-6 rounded-xl shadow-md text-center space-y-4">
+                <h2 class="text-lg font-bold">¿Cómo deseas unirte?</h2>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="handleAdminAccess()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-bold transition">
+                        Panel de Administrador
+                    </button>
+                    <button onclick="switchView('view-player-join')" class="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-bold transition">
+                        Unirse como Jugador
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 1.5: REGISTRO / LOGIN DE ADMINISTRADOR (CONECTADO A SUPABASE) -->
+        <div id="view-admin-auth" class="hidden space-y-3 my-auto">
+            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
+                <h2 id="auth-title" class="text-lg font-bold text-blue-600 text-center">Acceso Administrador</h2>
+                <p id="auth-desc" class="text-xs text-gray-500 text-center">Inicia sesión o crea tu cuenta de administrador</p>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Usuario</label>
+                        <input type="text" id="auth-username" class="w-full border rounded-lg p-2 bg-gray-50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Contraseña</label>
+                        <input type="password" id="auth-password" class="w-full border rounded-lg p-2 bg-gray-50">
+                    </div>
+                    <div id="admin-info-fields" class="hidden space-y-3 border-t pt-3">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Nombre Completo</label>
+                            <input type="text" id="auth-fullname" class="w-full border rounded-lg p-2 bg-gray-50" placeholder="Ej: Juan Pérez">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 pt-1">
+                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
+                    <button onclick="submitAdminAuth()" id="btn-auth-submit" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm transition">Ingresar</button>
+                </div>
+                
+                <div class="text-center">
+                    <button id="btn-auth-toggle" onclick="toggleAuthMode()" class="text-[11px] text-blue-500 underline">¿No tienes cuenta? Regístrate aquí</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 1.8: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS) -->
+        <div id="view-admin-dashboard" class="hidden space-y-3 flex flex-col h-full overflow-hidden">
+            <div class="bg-white p-3 rounded-xl shadow-md flex-shrink-0 flex justify-between items-center">
+                <div>
+                    <h2 class="text-md font-bold text-blue-600">Tus Salas</h2>
+                    <p class="text-[10px] text-gray-400 font-medium">Administra tus juegos activos</p>
+                </div>
+                <button onclick="switchView('view-admin-setup')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition">
+                    + Crear Sala
+                </button>
+            </div>
+
+            <!-- Contenedor de salas -->
+            <div class="flex-grow overflow-y-auto min-h-0">
+                <div id="admin-rooms-list" class="space-y-2 p-1">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: CONFIGURACIÓN DEL ADMINISTRADOR -->
+        <div id="view-admin-setup" class="hidden space-y-3 my-auto">
+            <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
+                <h2 class="text-lg font-bold text-blue-600">Configurar Nuevo Bingo</h2>
+                
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nombre de la Sala</label>
+                    <input type="text" id="admin-session-name" placeholder="Ej: Bingo Familiar" class="w-full border rounded-lg p-2 bg-gray-50 font-semibold text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded-lg border">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">Filas</label>
+                        <input type="number" id="admin-rows" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">Columnas</label>
+                        <input type="number" id="admin-cols" value="5" min="2" max="5" class="w-full border rounded p-1 text-center font-bold bg-white text-sm">
+                    </div>
+                </div>
+
+                <!-- OPCIÓN DE PARTICIPACIÓN DEL ADMINISTRADOR -->
+                <div class="flex items-center justify-between bg-blue-50 p-2 rounded-lg border border-blue-200 text-xs">
+                    <span class="font-bold text-blue-800">Quiero jugar en esta partida</span>
+                    <input type="checkbox" id="admin-wants-to-play" checked class="w-4 h-4 text-blue-600 rounded bg-white border-blue-300">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Tipo de Bingo</label>
+                    <select id="admin-game-type" onchange="toggleConfigFields()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50">
+                        <option value="numeros">Números</option>
+                        <option value="palabras">Palabras (Temas)</option>
+                    </select>
+                </div>
+
+                <!-- Campos para Números -->
+                <div id="config-numbers" class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-semibold mb-1">Mínimo</label>
+                        <input type="number" id="num-min" value="1" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold mb-1">Máximo</label>
+                        <input type="number" id="num-max" value="75" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50 text-center">
+                    </div>
+                </div>
+
+                <!-- Campos para Palabras -->
+                <div id="config-words" class="hidden space-y-1">
+                    <label class="block text-xs font-semibold mb-1">Seleccionar Tema</label>
+                    <select id="word-preset" onchange="loadPresetWords()" class="w-full border rounded-lg p-1.5 text-sm bg-gray-50">
+                        <option value="paises">Países</option>
+                        <option value="animales">Animales</option>
+                        <option value="cosas">Cosas Comunes</option>
+                        <option value="custom">Personalizado (Escribir abajo)</option>
+                    </select>
+                    <textarea id="custom-words-list" placeholder="Palabras separadas por comas..." class="w-full border rounded-lg p-1.5 text-xs bg-gray-50 h-16"></textarea>
+                </div>
+
+                <div class="flex space-x-2 pt-1">
+                    <button onclick="switchView('view-admin-dashboard')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
+                    <button onclick="createGameSession()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm transition">Crear Sala</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 3: LOBBY DE ESPERA DEL ADMINISTRADOR -->
+        <div id="view-admin-lobby" class="hidden space-y-4 my-auto">
+            <div class="bg-white p-6 rounded-xl shadow-md text-center space-y-4">
+                <h2 class="text-md font-bold text-gray-500">SALA CREADA</h2>
+                <div class="bg-blue-50 py-4 rounded-lg">
+                    <p class="text-xs text-blue-500 uppercase tracking-wider font-semibold">Código para compartir</p>
+                    <p id="lobby-code-display" class="text-4xl font-extrabold text-blue-600 tracking-widest">- - - -</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm text-left mb-2">Jugadores Conectados (<span id="player-count">0</span>):</h3>
+                    <ul id="player-list" class="divide-y text-left max-h-40 overflow-y-auto bg-gray-50 rounded-lg p-2 text-sm">
+                        <li class="text-gray-500 text-center py-2">Esperando participantes...</li>
+                    </ul>
+                </div>
+                <button onclick="startGameSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition">
+                    Iniciar Partida
+                </button>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 4: PANTALLA DIVIDIDA DEL ADMINISTRADOR (EN JUEGO - VIEWPORT FIT) -->
+        <div id="view-admin-play" class="hidden flex flex-col h-full space-y-2.5 overflow-hidden">
+            <!-- TARJETA SUPERIOR: Extracción -->
+            <div class="bg-white p-3 rounded-xl shadow border flex-shrink-0 space-y-2">
+                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Último elemento llamado</div>
+                
+                <div id="current-called-display" class="text-4xl font-black text-blue-600 text-center">--</div>
+                
+                <!-- Panel de Control Automático/Manual -->
+                <div class="bg-gray-50 p-2 rounded-lg border text-[11px] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-gray-600">Extracción Automática</span>
+                        <input type="checkbox" id="admin-auto-toggle" onchange="toggleAutoMode()" class="w-4 h-4 text-blue-600 rounded bg-gray-100 border-gray-300">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500">Intervalo (segundos)</span>
+                        <input type="number" id="admin-auto-interval" value="15" min="5" max="60" class="w-14 border rounded p-0.5 text-center bg-white font-bold text-xs">
+                    </div>
+                    <div id="admin-countdown-container" class="hidden text-center pt-1 border-t text-blue-600 font-bold animate-pulse">
+                        Siguiente extracción en: <span id="countdown-display" class="text-xs">15</span> s
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button id="btn-verify-winner" onclick="handleManualVerification()" class="hidden w-1/3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg text-xs transition">Verificar Reclamo</button>
+                    <button onclick="drawNextElement()" id="btn-draw" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-md shadow transition w-full">
+                        Llamar Siguiente
+                    </button>
+                </div>
+            </div>
+            
+            <!-- TARJETA INFERIOR: Pestañas -->
+            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0">
+                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0">
+                    <button id="tab-admin-board" onclick="switchAdminTab('board')" class="w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600">TABLERO GENERAL</button>
+                    <button id="tab-admin-card" onclick="switchAdminTab('card')" class="w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400">MI CARTÓN (JUGAR)</button>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto min-h-0">
+                    <div id="admin-tab-board-view" class="h-full space-y-3">
+                        <!-- MONITOREO DE PROGRESO DE JUGADORES -->
+                        <div class="bg-blue-50 p-2 rounded-lg border border-blue-200">
+                            <h4 class="text-[9px] font-bold text-blue-800 uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
+                            <div id="admin-progress-list" class="space-y-1 text-[11px]">
+                                <span class="text-gray-400 italic">Esperando actividad...</span>
+                            </div>
+                        </div>
+
+                        <div id="admin-board-grid" class="grid grid-cols-5 gap-1 p-0.5">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div id="admin-tab-card-view" class="hidden h-full">
+                        <div id="admin-player-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1" style="display: grid;">
+                            <!-- Cartón personal de juego del administrador -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 5: UNIRSE A PARTIDA (JUGADOR) -->
+        <div id="view-player-join" class="hidden space-y-4 my-auto">
+            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
+                <h2 class="text-lg font-bold text-green-600">Unirse al Juego</h2>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Código de la Sala</label>
+                    <input type="text" id="join-room-code" placeholder="Ej: ABCD" class="w-full border rounded-lg p-2 bg-gray-50 uppercase tracking-widest text-center text-lg font-bold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Tu Nombre o Apodo</label>
+                    <input type="text" id="join-player-name" placeholder="Ej: Carlos" class="w-full border rounded-lg p-2 bg-gray-50">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button onclick="switchView('view-welcome')" class="w-1/2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg font-semibold text-sm transition">Atrás</button>
+                    <button onclick="joinGame()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold text-sm transition">Ingresar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY) -->
+        <div id="view-player-lobby" class="hidden space-y-4 text-center my-auto">
+            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
+                <div class="animate-bounce inline-block p-4 bg-green-100 rounded-full text-green-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-xl font-bold text-gray-700">¡Ya estás dentro!</h2>
+                <p class="text-sm text-gray-500">Esperando que el administrador inicie la partida. Tu cartón ya ha sido asignado y guardado correctamente.</p>
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-400">Sala: <span id="player-lobby-room" class="font-bold"></span></p>
+                    <p class="text-xs text-gray-400">Nombre: <span id="player-lobby-name" class="font-bold"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 7: CARTÓN DE JUEGO (JUGADOR ACTIVO - VIEWPORT FIT) -->
+        <div id="view-player-play" class="hidden flex flex-col h-full space-y-2.5 overflow-hidden">
+            <!-- Banner superior de estado -->
+            <div class="bg-gray-800 text-white text-[10px] px-2.5 py-1 rounded-lg flex justify-between items-center shadow flex-shrink-0">
+                <span>👤: <strong id="player-meta-name" class="text-green-400"></strong></span>
+                <span>Sala: <strong id="player-meta-room" class="text-blue-400"></strong></span>
+            </div>
+
+            <!-- Panel Superior: Último elemento llamado (Compacto) -->
+            <div id="player-called-box" class="bg-white p-3 rounded-xl shadow border flex-shrink-0 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Último llamado</span>
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                </div>
+                
+                <div id="player-called-display" class="text-3xl font-extrabold text-blue-600 text-center tracking-tight py-0.5">
+                    Esperando...
+                </div>
+
+                <div class="border-t pt-1.5">
+                    <span class="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Llamados anteriores</span>
+                    <div id="player-history-list" class="flex space-x-1.5 overflow-x-auto py-0.5 px-0.5 scrollbar-thin">
+                        <span class="text-gray-400 text-[10px] italic">Ninguno aún</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Central: Cartón (Ocupa el espacio disponible de forma controlada) -->
+            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0">
+                <div id="player-card-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid;">
+                    <!-- Casillas autogeneradas -->
+                </div>
+            </div>
+
+            <!-- Panel Inferior: Botón de Bingo -->
+            <button onclick="claimBingo()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-md shadow hover:shadow-md transition-all duration-300 w-full animate-pulse tracking-wide flex-shrink-0">
+                📢 ¡CANTAR BINGO!
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Notificaciones flotantes -->
+    <div id="toast-notification" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg hidden transition-all duration-300 z-50">
+        Mensaje de prueba
+    </div>
+
+    <!-- LÓGICA DE APLICACIÓN -->
+    <script>
+        // CONFIGURACIÓN DE SUPABASE INTEGRADA
+        const SUPABASE_URL = 'https://dpjspuqsxhpoixhdgqie.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwanNwdXFzeGhwb2l4aGRncWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzg1OTIsImV4cCI6MjA5OTk1NDU5Mn0.TWsCFdrl0y_ekE8zuKUfJiW54oSBetMamcmjDFff1bM'; 
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ESTADO GLOBAL DE LA APP
+        let gameState = {
+            role: null,           
+            gameId: null,         
+            gameCode: null,       
+            playerId: null,       
+            playerName: null,     
+            cardMatrix: [],       
+            markedIndices: [],    
+            calledElements: [],   
+            realtimeSubscription: null,
+            lastProcessedElement: null,
+            rows: 5,
+            cols: 5,
+            authMode: 'login',
+            adminCardMatrix: [],  
+            adminMarkedIndices: [],
+            adminWantsToPlay: true 
+        };
+
+        // VARIABLES DE CONTROL DE AUTOMATIZACIÓN Y ANIMACIÓN
+        let autoDrawTimer = null;
+        let countdownTimer = null;
+        let secondsLeft = 15;
+        let confettiAnimationId = null;
+
+        // PRESETS DE PALABRAS
+        const PRESETS = {
+            paises: ["Argentina", "Brasil", "Canada", "Chile", "Colombia", "Espana", "Francia", "Italia", "Japon", "Mexico", "Peru", "Alemania", "Australia", "Egipto", "India", "Portugal", "Rusia", "Suecia", "Suiza", "China", "Belgica", "Grecia", "Holanda", "Noruega", "Turquia", "Bolivia", "Ecuador", "Uruguay", "Paraguay", "Venezuela"],
+            animales: ["Perro", "Gato", "Leon", "Tigre", "Elefante", "Jirafa", "Mono", "Caballo", "Vaca", "Oveja", "Oso", "Lobo", "Zorro", "Aguila", "Delfin", "Tiburon", "Ballena", "Tortuga", "Serpiente", "Rana", "Canguro", "Cebra", "Panda", "Koala", "Conejo", "Raton", "Hipopotamo", "Rinoceronte"],
+            cosas: ["Mesa", "Silla", "Telefono", "Computadora", "Reloj", "Libro", "Lapiz", "Vaso", "Plato", "Llave", "Puerta", "Ventana", "Cama", "Lampara", "Espejo", "Camara", "Bolso", "Zapato", "Pelota", "Guitarra", "Auto", "Bicicleta", "Radio", "Television", "Taza", "Papel", "Cuaderno", "Teclado", "Monitor"]
+        };
+
+        // INICIALIZACIÓN
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleConfigFields();
+            loadPresetWords();
+            checkRestoreSessions(); 
+        });
+
+        // NAVEGACIÓN ENTRE VISTAS
+        function switchView(viewId) {
+            const views = [
+                'view-welcome', 'view-admin-auth', 'view-admin-dashboard', 'view-admin-setup', 
+                'view-admin-lobby', 'view-admin-play', 'view-player-join', 'view-player-lobby', 'view-player-play'
+            ];
+            views.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        // CONTROL DE SALIDA MANUAL DEL JUEGO (BOTÓN ESCAPE)
+        function confirmExitGame() {
+            if (confirm("¿Estás seguro de que deseas salir al menú principal? Se limpiará tu sesión actual.")) {
+                stopAutoDraw();
+                localStorage.removeItem('bingo_player_session');
+                localStorage.removeItem('bingo_admin_session');
+                location.reload();
+            }
+        }
+
+        // MOSTRAR/OCULTAR CAMPOS DE CONFIGURACIÓN
+        function toggleConfigFields() {
+            const type = document.getElementById('admin-game-type').value;
+            if (type === 'numeros') {
+                document.getElementById('config-numbers').classList.remove('hidden');
+                document.getElementById('config-words').classList.add('hidden');
+            } else {
+                document.getElementById('config-numbers').classList.add('hidden');
+                document.getElementById('config-words').classList.remove('hidden');
+            }
+        }
+
+        // CARGAR PRESETS DE PALABRAS
+        function loadPresetWords() {
+            const presetKey = document.getElementById('word-preset').value;
+            const textarea = document.getElementById('custom-words-list');
+            if (presetKey !== 'custom' && PRESETS[presetKey]) {
+                textarea.value = PRESETS[presetKey].join(', ');
+                textarea.disabled = true;
+            } else {
+                textarea.value = '';
+                textarea.disabled = false;
+            }
+        }
+
+        // GENERAR UN CÓDIGO DE SALA ALEATORIO
+        function generateRandomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        // NOTIFICACIONES TOAST
+        function showToast(message) {
+            const toast = document.getElementById('toast-notification');
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // ==========================================
+        // SECCIÓN: AUTENTICACIÓN CON BASE DE DATOS (SUPABASE)
+        // ==========================================
+
+        function toggleAuthMode() {
+            const toggleBtn = document.getElementById('btn-auth-toggle');
+            const submitBtn = document.getElementById('btn-auth-submit');
+            const infoFields = document.getElementById('admin-info-fields');
+
+            if (gameState.authMode === 'login') {
+                gameState.authMode = 'register';
+                document.getElementById('auth-title').textContent = "Crear Administrador";
+                document.getElementById('auth-desc').textContent = "Regístrate en Supabase para crear salas.";
+                submitBtn.textContent = "Registrar";
+                toggleBtn.textContent = "¿Ya tienes cuenta? Inicia sesión aquí";
+                infoFields.classList.remove('hidden');
+            } else {
+                gameState.authMode = 'login';
+                document.getElementById('auth-title').textContent = "Ingreso Administrador";
+                document.getElementById('auth-desc').textContent = "Digita tus credenciales de Supabase.";
+                submitBtn.textContent = "Iniciar Sesión";
+                toggleBtn.textContent = "¿No tienes cuenta? Regístrate aquí";
+                infoFields.classList.add('hidden');
+            }
+        }
+
+        function handleAdminAccess() {
+            gameState.authMode = 'login';
+            toggleAuthMode(); 
+            switchView('view-admin-auth');
+        }
+
+        async function submitAdminAuth() {
+            const usuario = document.getElementById('auth-username').value.trim();
+            const contrasena = document.getElementById('auth-password').value.trim();
+
+            if (!usuario || !contrasena) {
+                showToast("Por favor llena los campos obligatorios");
+                return;
+            }
+
+            try {
+                if (gameState.authMode === 'register') {
+                    const nombre = document.getElementById('auth-fullname').value.trim() || 'Admin';
+                    
+                    const { data: checkData, error: checkError } = await supabaseClient
+                        .from('bingo_administradores')
+                        .select('id')
+                        .eq('usuario', usuario)
+                        .maybeSingle();
+
+                    if (checkError) throw checkError;
+
+                    if (checkData) {
+                        showToast("El usuario ya existe");
+                        return;
+                    }
+
+                    const { error: insertError } = await supabaseClient
+                        .from('bingo_administradores')
+                        .insert([
+                            {
+                                usuario: usuario,
+                                contrasena: contrasena,
+                                datos: { nombre_completo: nombre }
+                            }
+                        ]);
+
+                    if (insertError) throw insertError;
+                    
+                    showToast("Registro completado. Ahora inicia sesión.");
+                    gameState.authMode = 'register';
+                    toggleAuthMode(); 
+                } else {
+                    const { data, error: loginError } = await supabaseClient
+                        .from('bingo_administradores')
+                        .select('*')
+                        .eq('usuario', usuario)
+                        .eq('contrasena', contrasena)
+                        .maybeSingle();
+
+                    if (loginError) throw loginError;
+
+                    if (data) {
+                        showToast(`Bienvenido, ${data.datos?.nombre_completo || data.usuario}`);
+                        loadAdminDashboard(); 
+                    } else {
+                        showToast("Usuario o contraseña incorrectos");
+                    }
+                }
+            } catch (err) {
+                console.error("Error detallado de autenticación:", err);
+                const exactMsg = err.message || err.details || JSON.stringify(err);
+                showToast(`Fallo: ${exactMsg}`);
+            }
+        }
+
+        // ==========================================
+        // SECCIÓN: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS)
+        // ==========================================
+
+        async function loadAdminDashboard() {
+            try {
+                const { data: salas, error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .select('*')
+                    .order('creado_en', { ascending: false });
+
+                if (error) throw error;
+
+                const listContainer = document.getElementById('admin-rooms-list');
+                listContainer.innerHTML = '';
+
+                if (salas.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="bg-white p-6 rounded-xl border border-dashed text-center text-gray-500 text-sm">
+                            No tienes salas creadas. ¡Comienza creando tu primera sala de bingo!
+                        </div>`;
+                } else {
+                    salas.forEach(sala => {
+                        const statusColors = {
+                            esperando: 'bg-yellow-100 text-yellow-800',
+                            jugando: 'bg-green-100 text-green-800',
+                            finalizado: 'bg-gray-100 text-gray-800'
+                        };
+
+                        const card = document.createElement('div');
+                        card.className = 'bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-between items-center';
+                        card.innerHTML = `
+                            <div class="space-y-1">
+                                <h4 class="font-bold text-gray-800 text-sm">${sala.nombre_sesion}</h4>
+                                <div class="flex items-center space-x-1.5 text-xs text-gray-400 font-mono">
+                                    <span>Código: <strong>${sala.codigo_sala}</strong></span>
+                                    <span>•</span>
+                                    <span>Formato: ${sala.filas}x${sala.columnas}</span>
+                                </div>
+                                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[sala.estado] || 'bg-gray-100'} uppercase">
+                                    ${sala.estado}
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="resumeAdminRoom('${sala.id}')" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition" title="Ingresar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                </button>
+                                <button onclick="deleteAdminRoom('${sala.id}')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition" title="Eliminar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>`;
+                        listContainer.appendChild(card);
+                    });
+                }
+
+                switchView('view-admin-dashboard');
+
+            } catch (err) {
+                console.error("Error al cargar salas del panel:", err);
+                showToast("Error al obtener la lista de salas.");
+            }
+        }
+
+        async function resumeAdminRoom(roomId) {
+            try {
+                const { data: juego, error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .select('*')
+                    .eq('id', roomId)
+                    .single();
+
+                if (error || !juego) {
+                    showToast("No se pudo cargar la sala.");
+                    return;
+                }
+
+                gameState.gameId = juego.id;
+                gameState.gameCode = juego.codigo_sala;
+                gameState.rows = juego.filas;
+                gameState.cols = juego.columnas;
+                gameState.role = 'admin';
+                
+                gameState.adminWantsToPlay = (juego.configuracion?.admin_juega !== false);
+
+                let basePool = [];
+                if (juego.tipo === 'numeros') {
+                    for (let i = juego.configuracion.min; i <= juego.configuracion.max; i++) {
+                        basePool.push(i.toString());
+                    }
+                } else {
+                    basePool = [...juego.configuracion.palabras];
+                }
+                gameState.allElements = basePool;
+
+                saveAdminSessionToLocalStorage();
+
+                if (juego.estado === 'esperando') {
+                    document.getElementById('lobby-code-display').textContent = gameState.gameCode;
+                    switchView('view-admin-lobby');
+                    listenToPlayers();
+                } else if (juego.estado === 'jugando') {
+                    setupAdminGameBoard();
+                    switchView('view-admin-play');
+                    listenToWinners();
+                    
+                    toggleAdminTabsVisibility();
+
+                    if (gameState.adminWantsToPlay && gameState.adminCardMatrix.length > 0) {
+                        buildAdminPlayerCardUI();
+                    }
+
+                    gameState.calledElements = juego.elementos_llamados || [];
+                    document.getElementById('current-called-display').textContent = gameState.calledElements[gameState.calledElements.length - 1] || '--';
+                    
+                    gameState.calledElements.forEach(item => {
+                        setTimeout(() => {
+                            const cell = document.getElementById(`admin-cell-${item}`);
+                            if (cell) {
+                                cell.classList.remove('bg-gray-50');
+                                cell.classList.add('bg-blue-600', 'text-white');
+                            }
+                        }, 100);
+                    });
+                }
+
+            } catch (e) {
+                console.error(e);
+                showToast("Error al ingresar a la sala.");
+            }
+        }
+
+        async function deleteAdminRoom(roomId) {
+            if (!confirm("¿Estás seguro de que deseas eliminar esta sala de forma permanente? Se desconectarán todos los jugadores.")) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .delete()
+                    .eq('id', roomId);
+
+                if (error) throw error;
+
+                showToast("Sala eliminada del servidor.");
+                loadAdminDashboard(); 
+            } catch (err) {
+                console.error(err);
+                showToast("Error al eliminar la sala.");
+            }
+        }
+
+        // ==========================================
+        // SECCIÓN: LÓGICA DEL ADMINISTRADOR (CONFIGURACIÓN)
+        // ==========================================
+
+        async function createGameSession() {
+            const type = document.getElementById('admin-game-type').value;
+            const rows = parseInt(document.getElementById('admin-rows').value) || 5;
+            const cols = parseInt(document.getElementById('admin-cols').value) || 5;
+            const sessionName = document.getElementById('admin-session-name').value.trim() || 'Partida de Bingo';
+            const adminPlays = document.getElementById('admin-wants-to-play').checked;
+            const gridSize = rows * cols;
+
+            let configData = {};
+            let listElements = [];
+
+            if (type === 'numeros') {
+                const min = parseInt(document.getElementById('num-min').value) || 1;
+                const max = parseInt(document.getElementById('num-max').value) || 75;
+                const poolSize = (max - min) + 1;
+
+                if (min >= max) {
+                    showToast('El mínimo debe ser menor al máximo');
+                    return;
+                }
+                if (poolSize < gridSize) {
+                    showToast(`Se necesitan al menos ${gridSize} números en el rango para llenar el cartón`);
+                    return;
+                }
+                configData = { min, max, admin_juega: adminPlays };
+                for (let i = min; i <= max; i++) {
+                    listElements.push(i.toString());
+                }
+            } else {
+                const text = document.getElementById('custom-words-list').value;
+                const words = text.split(',').map(w => w.trim()).filter(w => w.length > 0);
+                
+                if (words.length < gridSize) {
+                    showToast(`Se necesitan al menos ${gridSize} palabras para una cuadrícula de ${rows}x${cols}`);
+                    return;
+                }
+                configData = { palabras: words, admin_juega: adminPlays };
+                listElements = words;
+            }
+
+            const roomCode = generateRandomCode();
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .insert({
+                        nombre_sesion: sessionName,
+                        codigo_sala: roomCode,
+                        tipo: type,
+                        filas: rows,
+                        columnas: cols,
+                        configuracion: configData,
+                        elementos_llamados: [],
+                        estado: 'esperando'
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                gameState.gameId = data.id;
+                gameState.gameCode = roomCode;
+                gameState.allElements = listElements;
+                gameState.rows = rows;
+                gameState.cols = cols;
+                gameState.role = 'admin';
+                gameState.adminWantsToPlay = adminPlays;
+
+                saveAdminSessionToLocalStorage();
+
+                document.getElementById('lobby-code-display').textContent = roomCode;
+                switchView('view-admin-lobby');
+                
+                listenToPlayers();
+            } catch (err) {
+                console.error("Error al crear sesión de juego:", err);
+                const exactMsg = err.message || err.details || JSON.stringify(err);
+                showToast(`Fallo al crear juego: ${exactMsg}`);
+            }
+        }
+
+        function saveAdminSessionToLocalStorage() {
+            const sessionData = {
+                gameId: gameState.gameId,
+                gameCode: gameState.gameCode,
+                allElements: gameState.allElements,
+                rows: gameState.rows,
+                cols: gameState.cols,
+                role: 'admin',
+                adminCardMatrix: gameState.adminCardMatrix,
+                adminMarkedIndices: gameState.adminMarkedIndices,
+                adminWantsToPlay: gameState.adminWantsToPlay
+            };
+            localStorage.setItem('bingo_admin_session', JSON.stringify(sessionData));
+        }
+
+        // CONTROL DE PESTAÑAS DEL ADMINISTRADOR (PANEL DE JUEGO)
+        function switchAdminTab(tabName) {
+            const tabBoard = document.getElementById('tab-admin-board');
+            const tabCard = document.getElementById('tab-admin-card');
+            const viewBoard = document.getElementById('admin-tab-board-view');
+            const viewCard = document.getElementById('admin-tab-card-view');
+
+            if (tabName === 'board') {
+                tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
+                tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
+                viewBoard.classList.remove('hidden');
+                viewCard.classList.add('hidden');
+            } else {
+                tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
+                tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
+                viewBoard.classList.add('hidden');
+                viewCard.classList.remove('hidden');
+                
+                if (gameState.adminCardMatrix.length === 0) {
+                    generateAdminCard();
+                }
+            }
+        }
+
+        function toggleAdminTabsVisibility() {
+            const tabsHeader = document.getElementById('admin-tabs-header');
+            if (gameState.adminWantsToPlay) {
+                tabsHeader.classList.remove('hidden');
+                switchAdminTab('board'); 
+            } else {
+                tabsHeader.classList.add('hidden');
+                document.getElementById('admin-tab-board-view').classList.remove('hidden');
+                document.getElementById('admin-tab-card-view').classList.add('hidden');
+            }
+        }
+
+        // GENERADOR DE CARTÓN ÚNICO PARA EL ADMINISTRADOR
+        function generateAdminCard() {
+            const totalCells = gameState.rows * gameState.cols;
+            const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+
+            const shuffled = [...gameState.allElements];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+
+            const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
+            const cardSelection = shuffled.slice(0, sizeRequired);
+
+            if (isOddDimension) {
+                cardSelection.splice(centerIndex, 0, "LIBRE");
+            }
+
+            gameState.adminCardMatrix = cardSelection;
+            gameState.adminMarkedIndices = isOddDimension ? [centerIndex] : [];
+            saveAdminSessionToLocalStorage();
+            
+            buildAdminPlayerCardUI();
+        }
+
+        function buildAdminPlayerCardUI() {
+            const grid = document.getElementById('admin-player-grid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
+
+            const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = isOddDimension ? Math.floor((gameState.rows * gameState.cols) / 2) : -1;
+
+            gameState.adminCardMatrix.forEach((val, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'aspect-square flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
+                
+                if (gameState.cols > 4) {
+                    btn.classList.add('text-xs');
+                } else {
+                    btn.classList.add('text-lg');
+                }
+
+                if (index === centerIndex && isOddDimension) {
+                    btn.className += ' bg-green-500 text-white border-green-600 shadow-inner cursor-default';
+                    btn.textContent = 'LIBRE';
+                } else {
+                    const isMarked = gameState.adminMarkedIndices.includes(index);
+                    if (isMarked) {
+                        btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
+                    } else {
+                        btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
+                    }
+                    btn.textContent = val;
+
+                    btn.onclick = () => {
+                        const cellIndex = index;
+                        const cellValue = val;
+                        
+                        // SEGURIDAD: Validar que el elemento fue cantado previamente
+                        const isCalled = gameState.calledElements.includes(cellValue);
+                        if (!isCalled) {
+                            showToast(`"${cellValue}" aún no ha sido extraído.`);
+                            return; // Ignorar acción de marcado trampa
+                        }
+
+                        if (gameState.adminMarkedIndices.includes(cellIndex)) {
+                            gameState.adminMarkedIndices = gameState.adminMarkedIndices.filter(i => i !== cellIndex);
+                            btn.className = btn.className.replace(/bg-emerald-600|text-white|border-emerald-700|shadow-inner/g, '').trim();
+                            btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
+                        } else {
+                            gameState.adminMarkedIndices.push(cellIndex);
+                            btn.className = btn.className.replace(/bg-white|hover:bg-gray-50|text-gray-700|border-gray-300/g, '').trim();
+                            btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
+                        }
+                        saveAdminSessionToLocalStorage();
+                    };
+                }
+                grid.appendChild(btn);
+            });
+        }
+
+        function listenToPlayers() {
+            gameState.realtimeSubscription = supabaseClient
+                .channel('lobby-updates')
+                .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'bingo_jugadores'
+                }, payload => {
+                    if (payload.new.juego_id === gameState.gameId) {
+                        addNewPlayerToList(payload.new);
+                    }
+                })
+                .subscribe();
+            
+            updatePlayerListUI();
+        }
+
+        async function updatePlayerListUI() {
+            const { data, error } = await supabaseClient
+                .from('bingo_jugadores')
+                .select('*')
+                .eq('juego_id', gameState.gameId);
+
+            if (error) return;
+
+            const listContainer = document.getElementById('player-list');
+            const countSpan = document.getElementById('player-count');
+            
+            if (data.length === 0) {
+                listContainer.innerHTML = '<li class="text-gray-500 text-center py-2">Esperando participantes...</li>';
+                countSpan.textContent = '0';
+                return;
+            }
+
+            countSpan.textContent = data.length;
+            listContainer.innerHTML = '';
+            data.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'py-2 px-3 border-b border-gray-100 flex justify-between items-center';
+                li.innerHTML = `<span>👤 ${p.nombre}</span> <span class="text-xs text-green-500 font-semibold">Listo</span>`;
+                listContainer.appendChild(li);
+            });
+        }
+
+        function addNewPlayerToList(player) {
+            showToast(`${player.nombre} se ha unido`);
+            updatePlayerListUI();
+        }
+
+        async function startGameSession() {
+            const { error } = await supabaseClient
+                .from('bingo_juegos')
+                .update({ estado: 'jugando' })
+                .eq('id', gameState.gameId);
+
+            if (error) {
+                showToast('No se pudo iniciar el juego');
+                return;
+            }
+
+            if (gameState.realtimeSubscription) {
+                supabaseClient.removeChannel(gameState.realtimeSubscription);
+            }
+
+            setupAdminGameBoard();
+            switchView('view-admin-play');
+            listenToWinners();
+            
+            toggleAdminTabsVisibility();
+        }
+
+        function setupAdminGameBoard() {
+            const grid = document.getElementById('admin-board-grid');
+            grid.innerHTML = '';
+
+            gameState.allElements.forEach(item => {
+                const cell = document.createElement('div');
+                cell.id = `admin-cell-${item}`;
+                cell.className = 'border text-xs py-2 px-1 text-center font-bold bg-gray-50 rounded select-none truncate';
+                cell.textContent = item;
+                grid.appendChild(cell);
+            });
+        }
+
+        // CONTROL AUTOMÁTICO EN EL ADMINISTRADOR
+        function toggleAutoMode() {
+            const isAuto = document.getElementById('admin-auto-toggle').checked;
+            const intervalInput = document.getElementById('admin-auto-interval');
+            const countdownContainer = document.getElementById('admin-countdown-container');
+            const btnDraw = document.getElementById('btn-draw');
+
+            if (isAuto) {
+                intervalInput.disabled = true;
+                countdownContainer.classList.remove('hidden');
+                btnDraw.disabled = true;
+                btnDraw.classList.add('opacity-50');
+                startAutoDraw();
+            } else {
+                intervalInput.disabled = false;
+                countdownContainer.classList.add('hidden');
+                btnDraw.disabled = false;
+                btnDraw.classList.remove('opacity-50');
+                stopAutoDraw();
+            }
+        }
+
+        function startAutoDraw() {
+            const intervalSeconds = parseInt(document.getElementById('admin-auto-interval').value) || 15;
+            secondsLeft = intervalSeconds;
+            updateCountdownUI();
+
+            autoDrawTimer = setInterval(() => {
+                drawNextElement();
+                secondsLeft = intervalSeconds;
+                updateCountdownUI();
+            }, intervalSeconds * 1000);
+
+            countdownTimer = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft < 0) secondsLeft = 0;
+                updateCountdownUI();
+            }, 1000);
+        }
+
+        function stopAutoDraw() {
+            clearInterval(autoDrawTimer);
+            clearInterval(countdownTimer);
+            document.getElementById('admin-auto-toggle').checked = false;
+            document.getElementById('admin-auto-interval').disabled = false;
+            document.getElementById('admin-countdown-container').classList.add('hidden');
+            
+            const btnDraw = document.getElementById('btn-draw');
+            btnDraw.disabled = false;
+            btnDraw.classList.remove('opacity-50');
+        }
+
+        function updateCountdownUI() {
+            document.getElementById('countdown-display').textContent = secondsLeft;
+        }
+
+        async function drawNextElement() {
+            const pool = gameState.allElements.filter(el => !gameState.calledElements.includes(el));
+            
+            if (pool.length === 0) {
+                showToast('¡Se han extraído todos los elementos!');
+                stopAutoDraw();
+                return;
+            }
+
+            const chosen = pool[Math.floor(Math.random() * pool.length)];
+            gameState.calledElements.push(chosen);
+
+            document.getElementById('current-called-display').textContent = chosen;
+            const cell = document.getElementById(`admin-cell-${chosen}`);
+            if (cell) {
+                cell.classList.remove('bg-gray-50');
+                cell.classList.add('bg-blue-600', 'text-white');
+            }
+
+            const { error } = await supabaseClient
+                .from('bingo_juegos')
+                .update({ elementos_llamados: gameState.calledElements })
+                .eq('id', gameState.gameId);
+
+            if (error) {
+                showToast('Error al enviar actualización');
+            }
+        }
+
+        function listenToWinners() {
+            supabaseClient
+                .channel('room-winners')
+                .on('postgres_changes', { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'bingo_jugadores'
+                }, payload => {
+                    if (payload.new.juego_id === gameState.gameId) {
+                        updatePlayersProgressList();
+
+                        if (payload.new.es_ganador) {
+                            stopAutoDraw();
+                            document.getElementById('btn-verify-winner').classList.remove('hidden');
+                            document.getElementById('btn-draw').classList.add('w-2/3');
+                            
+                            startCelebration(); 
+                            showToast(`¡BINGO! Reclamo de ${payload.new.nombre}`);
+                        }
+                    }
+                })
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'bingo_jugadores'
+                }, () => {
+                    updatePlayersProgressList();
+                })
+                .subscribe();
+
+            updatePlayersProgressList();
+        }
+
+        async function updatePlayersProgressList() {
+            try {
+                const { data: jugadores, error } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .select('*')
+                    .eq('juego_id', gameState.gameId);
+
+                if (error || !jugadores) return;
+
+                const progressContainer = document.getElementById('admin-progress-list');
+                progressContainer.innerHTML = '';
+
+                if (jugadores.length === 0) {
+                    progressContainer.innerHTML = '<span class="text-gray-400 italic">No hay jugadores conectados...</span>';
+                    return;
+                }
+
+                // Generar reporte de aciertos reales (contrastando marcadas contra llamado en db)
+                const progressData = jugadores.map(jugador => {
+                    const marcadas = jugador.casillas_marcadas || [];
+                    
+                    const totalCells = gameState.rows * gameState.cols;
+                    const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+                    const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
+                    
+                    // Cálculo de celdas restantes para ganar (Bingo Completo)
+                    const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
+                    const marcadasValidasCount = marcadas.filter(i => i !== centerIndex).length;
+                    
+                    const isMissingOnlyOne = (targetCellsCount - marcadasValidasCount === 1);
+                    const mathematicallyHasBingo = (marcadasValidasCount >= targetCellsCount);
+
+                    let statusText = `${marcadas.length} marcadas`;
+                    let statusClass = 'bg-blue-100 text-blue-800';
+
+                    if (jugador.es_ganador) {
+                        statusText = '🏆 BINGO RECLAMADO';
+                        statusClass = 'bg-green-100 text-green-800 animate-pulse';
+                    } else if (mathematicallyHasBingo) {
+                        statusText = '⚠️ ¡TIENE BINGO! (Sin cantar)';
+                        statusClass = 'bg-red-100 text-red-800 font-black animate-pulse';
+                    } else if (isMissingOnlyOne) {
+                        statusText = '⚡ ¡Falta 1 casilla!';
+                        statusClass = 'bg-yellow-100 text-yellow-800';
+                    }
+
+                    return {
+                        nombre: jugador.nombre,
+                        statusText,
+                        statusClass,
+                        score: marcadas.length
+                    };
+                });
+
+                progressData.sort((a, b) => b.score - a.score);
+
+                progressData.forEach(player => {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center py-1 border-b border-blue-100 last:border-b-0';
+                    div.innerHTML = `
+                        <span class="font-medium text-gray-700">👤 ${player.nombre}</span>
+                        <span class="font-bold px-2 py-0.5 rounded text-[10px] ${player.statusClass}">
+                            ${player.statusText}
+                        </span>`;
+                    progressContainer.appendChild(div);
+                });
+
+            } catch (err) {
+                console.error("Fallo al actualizar monitoreo:", err);
+            }
+        }
+
+        async function handleManualVerification() {
+            const { data: jugador } = await supabaseClient
+                .from('bingo_jugadores')
+                .select('*')
+                .eq('juego_id', gameState.gameId)
+                .eq('es_ganador', true)
+                .single();
+
+            if (!jugador) {
+                showToast("No hay reclamos activos.");
+                return;
+            }
+
+            const { data: carton } = await supabaseClient
+                .from('bingo_cartones')
+                .select('*')
+                .eq('jugador_id', jugador.id)
+                .single();
+
+            console.group(`Verificación de Cartón de ${jugador.nombre}`);
+            console.log("Matriz Generada: ", carton.matriz);
+            console.log("Elementos Llamados: ", gameState.calledElements);
+            console.groupEnd();
+
+            alert(`Cartón de ${jugador.nombre} verificado visualmente en consola. Presione aceptar para confirmar la finalización del juego.`);
+            
+            await supabaseClient
+                .from('bingo_juegos')
+                .update({ estado: 'finalizado' })
+                .eq('id', gameState.gameId);
+        }
+
+        // ==========================================
+        // SECCIÓN: LÓGICA DEL JUGADOR
+        // ==========================================
+
+        async function joinGame() {
+            const roomCode = document.getElementById('join-room-code').value.toUpperCase().trim();
+            const playerName = document.getElementById('join-player-name').value.trim();
+
+            if (!roomCode || !playerName) {
+                showToast('Ingresa el código y tu nombre');
+                return;
+            }
+
+            try {
+                const { data: juego, error: errJuego } = await supabaseClient
+                    .from('bingo_juegos')
+                    .select('*')
+                    .eq('codigo_sala', roomCode)
+                    .single();
+
+                if (errJuego || !juego) {
+                    showToast('Sala no encontrada');
+                    return;
+                }
+
+                if (juego.estado === 'finalizado') {
+                    showToast('Esta partida ya ha concluido');
+                    return;
+                }
+
+                gameState.gameId = juego.id;
+                gameState.gameCode = roomCode;
+                gameState.playerName = playerName;
+                gameState.rows = juego.filas;
+                gameState.cols = juego.columnas;
+                gameState.role = 'player';
+                
+                const totalCells = juego.filas * juego.columnas;
+                const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
+                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+                
+                gameState.markedIndices = isOddDimension ? [centerIndex] : [];
+
+                const { data: jugador, error: errJugador } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .insert({
+                        juego_id: juego.id,
+                        nombre: playerName,
+                        es_ganador: false,
+                        casillas_marcadas: gameState.markedIndices 
+                    })
+                    .select()
+                    .single();
+
+                if (errJugador) throw errJugador;
+                gameState.playerId = jugador.id;
+
+                let basePool = [];
+                if (juego.tipo === 'numeros') {
+                    const min = juego.configuracion.min;
+                    const max = juego.configuracion.max;
+                    for (let i = min; i <= max; i++) {
+                        basePool.push(i.toString());
+                    }
+                } else {
+                    basePool = [...juego.configuracion.palabras];
+                }
+
+                const shuffled = [...basePool];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+
+                const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
+                const cardSelection = shuffled.slice(0, sizeRequired);
+
+                if (isOddDimension) {
+                    cardSelection.splice(centerIndex, 0, "LIBRE");
+                }
+                gameState.cardMatrix = cardSelection;
+
+                const { error: errCarton } = await supabaseClient
+                    .from('bingo_cartones')
+                    .insert({
+                        jugador_id: jugador.id,
+                        juego_id: juego.id,
+                        matriz: cardSelection
+                    });
+
+                if (errCarton) throw errCarton;
+
+                savePlayerSessionToLocalStorage();
+
+                document.getElementById('player-lobby-room').textContent = roomCode;
+                document.getElementById('player-lobby-name').textContent = playerName;
+                switchView('view-player-lobby');
+
+                listenToGameStart();
+
+            } catch (err) {
+                console.error(err);
+                showToast('Error de conexión.');
+            }
+        }
+
+        function savePlayerSessionToLocalStorage() {
+            const sessionData = {
+                gameId: gameState.gameId,
+                gameCode: gameState.gameCode,
+                playerId: gameState.playerId,
+                playerName: gameState.playerName,
+                cardMatrix: gameState.cardMatrix,
+                markedIndices: gameState.markedIndices,
+                rows: gameState.rows,
+                cols: gameState.cols
+            };
+            localStorage.setItem('bingo_player_session', JSON.stringify(sessionData));
+        }
+
+        async function checkRestoreSessions() {
+            const rawAdminSession = localStorage.getItem('bingo_admin_session');
+            const rawPlayerSession = localStorage.getItem('bingo_player_session');
+
+            if (rawAdminSession) {
+                try {
+                    const session = JSON.parse(rawAdminSession);
+                    
+                    const { data: juego, error } = await supabaseClient
+                        .from('bingo_juegos')
+                        .select('*')
+                        .eq('id', session.gameId)
+                        .single();
+
+                    if (!error && juego && juego.estado !== 'finalizado') {
+                        gameState.gameId = session.gameId;
+                        gameState.gameCode = session.gameCode;
+                        gameState.allElements = session.allElements;
+                        gameState.rows = session.rows;
+                        gameState.cols = session.cols;
+                        gameState.role = 'admin';
+                        gameState.adminCardMatrix = session.adminCardMatrix || [];
+                        gameState.adminMarkedIndices = session.adminMarkedIndices || [];
+                        gameState.adminWantsToPlay = (juego.configuracion?.admin_juega !== false);
+
+                        if (juego.estado === 'esperando') {
+                            document.getElementById('lobby-code-display').textContent = gameState.gameCode;
+                            switchView('view-admin-lobby');
+                            listenToPlayers();
+                        } else if (juego.estado === 'jugando') {
+                            setupAdminGameBoard();
+                            switchView('view-admin-play');
+                            listenToWinners();
+                            
+                            toggleAdminTabsVisibility();
+
+                            if (gameState.adminWantsToPlay && gameState.adminCardMatrix.length > 0) {
+                                buildAdminPlayerCardUI();
+                            }
+
+                            gameState.calledElements = juego.elementos_llamados || [];
+                            document.getElementById('current-called-display').textContent = gameState.calledElements[gameState.calledElements.length - 1] || '--';
+                            
+                            gameState.calledElements.forEach(item => {
+                                setTimeout(() => {
+                                    const cell = document.getElementById(`admin-cell-${item}`);
+                                    if (cell) {
+                                        cell.classList.remove('bg-gray-50');
+                                        cell.classList.add('bg-blue-600', 'text-white');
+                                    }
+                                }, 100);
+                            });
+                        }
+                        return; 
+                    } else {
+                        localStorage.removeItem('bingo_admin_session');
+                    }
+                } catch (e) {
+                    console.error("Error al restaurar sesión de administrador:", e);
+                    localStorage.removeItem('bingo_admin_session');
+                }
+            }
+
+            if (rawPlayerSession) {
+                try {
+                    const session = JSON.parse(rawPlayerSession);
+
+                    const { data: juego, error } = await supabaseClient
+                        .from('bingo_juegos')
+                        .select('*')
+                        .eq('id', session.gameId)
+                        .single();
+
+                    if (error || !juego || juego.estado === 'finalizado') {
+                        localStorage.removeItem('bingo_player_session');
+                        return;
+                    }
+
+                    gameState.gameId = session.gameId;
+                    gameState.gameCode = session.gameCode;
+                    gameState.playerId = session.playerId;
+                    gameState.playerName = session.playerName;
+                    gameState.cardMatrix = session.cardMatrix;
+                    gameState.markedIndices = session.markedIndices || [];
+                    gameState.rows = session.rows;
+                    gameState.cols = session.cols;
+                    gameState.role = 'player';
+
+                    if (juego.estado === 'esperando') {
+                        document.getElementById('player-lobby-room').textContent = gameState.gameCode;
+                        document.getElementById('player-lobby-name').textContent = gameState.playerName;
+                        switchView('view-player-lobby');
+                    } else if (juego.estado === 'jugando') {
+                        startGameForPlayer();
+                    }
+
+                    listenToGameStart();
+                    updatePlayerCalledElements(juego.elementos_llamados);
+
+                } catch (e) {
+                    console.error("Error al restaurar sesión de jugador:", e);
+                    localStorage.removeItem('bingo_player_session');
+                }
+            }
+        }
+
+        function listenToGameStart() {
+            gameState.realtimeSubscription = supabaseClient
+                .channel('game-state-updates')
+                .on('postgres_changes', { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'bingo_juegos'
+                }, payload => {
+                    if (payload.new.id === gameState.gameId) {
+                        const juego = payload.new;
+                        if (juego.estado === 'jugando' && document.getElementById('view-player-play').classList.contains('hidden')) {
+                            startGameForPlayer();
+                        }
+                        if (juego.estado === 'finalizado') {
+                            // Sincronizar el nombre del ganador para el telón final
+                            displayGameWinnerOverlay();
+                        }
+                        updatePlayerCalledElements(juego.elementos_llamados);
+                    }
+                })
+                .subscribe();
+        }
+
+        // Consultar el ganador legítimo de la sesión y desplegar el telón final apoteósico
+        async function displayGameWinnerOverlay() {
+            try {
+                const { data: ganador } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .select('nombre')
+                    .eq('juego_id', gameState.gameId)
+                    .eq('es_ganador', true)
+                    .maybeSingle();
+
+                const winnerName = ganador ? ganador.nombre : 'Partida Finalizada';
+                document.getElementById('winner-announcement').textContent = `🏆 ${winnerName} 🏆`;
+                
+                // Mostrar telón de celebración a pantalla completa
+                document.getElementById('celebration-overlay').classList.remove('hidden');
+                startCelebration();
+
+                localStorage.removeItem('bingo_player_session');
+                localStorage.removeItem('bingo_admin_session');
+
+                // Terminar de forma elegante tras 8 segundos de luces y confeti
+                setTimeout(() => {
+                    location.reload();
+                }, 8000);
+
+            } catch (e) {
+                console.error(e);
+                location.reload();
+            }
+        }
+
+        function startGameForPlayer() {
+            document.getElementById('player-meta-name').textContent = gameState.playerName;
+            document.getElementById('player-meta-room').textContent = gameState.gameCode;
+
+            buildPlayerCardUI();
+            switchView('view-player-play');
+        }
+
+        function buildPlayerCardUI() {
+            const grid = document.getElementById('player-card-grid');
+            grid.innerHTML = '';
+            
+            grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
+
+            const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = isOddDimension ? Math.floor((gameState.rows * gameState.cols) / 2) : -1;
+
+            gameState.cardMatrix.forEach((val, index) => {
+                const btn = document.createElement('button');
+                btn.id = `player-cell-${index}`;
+                btn.className = 'aspect-square flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
+                
+                if (gameState.cols > 4) {
+                    btn.classList.add('text-xs');
+                } else {
+                    btn.classList.add('text-lg');
+                }
+
+                if (index === centerIndex && isOddDimension) {
+                    btn.className += ' bg-green-500 text-white border-green-600 shadow-inner cursor-default';
+                    btn.textContent = 'LIBRE';
+                } else {
+                    const isMarked = gameState.markedIndices.includes(index);
+                    if (isMarked) {
+                        btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
+                    } else {
+                        btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
+                    }
+                    
+                    btn.textContent = val;
+                    btn.onclick = async () => {
+                        const cellIndex = index;
+                        const cellValue = val;
+
+                        // SEGURIDAD: Evitar que el jugador marque casillas no extraídas
+                        const isCalled = gameState.calledElements.includes(cellValue);
+                        if (!isCalled) {
+                            showToast(`"${cellValue}" aún no ha sido extraído por el Administrador.`);
+                            return; // Bloquear acción de trampa
+                        }
+
+                        if (gameState.markedIndices.includes(cellIndex)) {
+                            gameState.markedIndices = gameState.markedIndices.filter(i => i !== cellIndex);
+                            btn.className = btn.className.replace(/bg-emerald-600|text-white|border-emerald-700|shadow-inner/g, '').trim();
+                            btn.className += ' bg-white hover:bg-gray-50 text-gray-700 border-gray-300';
+                        } else {
+                            gameState.markedIndices.push(cellIndex);
+                            btn.className = btn.className.replace(/bg-white|hover:bg-gray-50|text-gray-700|border-gray-300/g, '').trim();
+                            btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
+                        }
+                        
+                        savePlayerSessionToLocalStorage();
+                        
+                        // Sincronizar marcas a Supabase al instante para monitoreo del Administrador
+                        await syncPlayerMarksToDatabase();
+                    };
+                }
+                grid.appendChild(btn);
+            });
+        }
+
+        // Sincronizar las casillas marcadas a Supabase en tiempo real
+        async function syncPlayerMarksToDatabase() {
+            try {
+                await supabaseClient
+                    .from('bingo_jugadores')
+                    .update({ casillas_marcadas: gameState.markedIndices })
+                    .eq('id', gameState.playerId);
+            } catch (err) {
+                console.error("Error al sincronizar marcas:", err);
+            }
+        }
+
+        function updatePlayerCalledElements(calledArray) {
+            const historyList = document.getElementById('player-history-list');
+
+            // Mantener al jugador con el historial de llamados sincronizados por si volvió a ingresar
+            gameState.calledElements = calledArray || [];
+
+            if (!calledArray || calledArray.length === 0) {
+                document.getElementById('player-called-display').textContent = 'Esperando...';
+                historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Ninguno aún</span>';
+                return;
+            }
+
+            const last = calledArray[calledArray.length - 1];
+            
+            if (last !== gameState.lastProcessedElement) {
+                gameState.lastProcessedElement = last;
+                
+                const calledBox = document.getElementById('player-called-box');
+                calledBox.classList.remove('animate-apoteosic');
+                void calledBox.offsetWidth; 
+                calledBox.classList.add('animate-apoteosic');
+            }
+
+            document.getElementById('player-called-display').textContent = last;
+            
+            historyList.innerHTML = '';
+            const history = [...calledArray].reverse().slice(1);
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Sin elementos anteriores</span>';
+            } else {
+                history.forEach(item => {
+                    const badge = document.createElement('span');
+                    badge.className = 'bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap border border-blue-200 shrink-0';
+                    badge.textContent = item;
+                    historyList.appendChild(badge);
+                });
+            }
+
+            const matchedIndex = gameState.cardMatrix.indexOf(last);
+            if (matchedIndex !== -1) {
+                const totalCells = gameState.rows * gameState.cols;
+                const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+                
+                if (matchedIndex !== centerIndex) {
+                    showToast(`¡Tienes "${last}" en tu cartón!`);
+                }
+            }
+        }
+
+        async function claimBingo() {
+            const { error } = await supabaseClient
+                .from('bingo_jugadores')
+                .update({ es_ganador: true })
+                .eq('id', gameState.playerId);
+
+            if (error) {
+                showToast('Error al cantar Bingo');
+            } else {
+                startCelebration(); 
+                showToast('¡Has reclamado Bingo! Esperando confirmación del Administrador.');
+            }
+        }
+
+        // ==========================================
+        // SECCIÓN: ANIMACIÓN DE CELEBRACIÓN APOTEÓSICA
+        // ==========================================
+
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let confetti = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Confetto {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height - 20;
+                this.size = Math.random() * 8 + 6;
+                this.color = `hsl(${Math.random() * 360}, 90%, 50%)`;
+                this.speed = Math.random() * 4 + 3;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 4 - 2;
+                this.wind = Math.random() * 2 - 1;
+            }
+            update() {
+                this.y += this.speed;
+                this.x += this.wind;
+                this.rotation += this.rotationSpeed;
+                if (this.y > canvas.height) {
+                    this.y = -20;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        function initConfetti() {
+            confetti = [];
+            for (let i = 0; i < 150; i++) {
+                confetti.push(new Confetto());
+            }
+        }
+
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            confetti.forEach(c => {
+                c.update();
+                c.draw();
+            });
+            confettiAnimationId = requestAnimationFrame(animateConfetti);
+        }
+
+        function startCelebration() {
+            initConfetti();
+            if (confettiAnimationId) cancelAnimationFrame(confettiAnimationId);
+            animateConfetti();
+            
+            setTimeout(() => {
+                if (confettiAnimationId) {
+                    cancelAnimationFrame(confettiAnimationId);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }, 8000);
+        }
+    </script>
+</body>
+</html>
