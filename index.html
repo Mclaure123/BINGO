@@ -432,7 +432,7 @@
             
             <!-- TARJETA INFERIOR: Pestañas -->
             <div class="p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
-                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0" style="border-color: var(--border);">
+                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0" style="border-b-color: var(--border);">
                     <button id="tab-admin-board" onclick="switchAdminTab('board')" class="w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600">TABLERO GENERAL</button>
                     <button id="tab-admin-card" onclick="switchAdminTab('card')" class="w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400">MI CARTÓN (JUGAR)</button>
                 </div>
@@ -513,6 +513,22 @@
                 </div>
             </div>
 
+            <!-- EXPLICACIÓN DE REGLAS DE ONBOARDING EN EL LOBBY -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed text-left flex-shrink-0">
+                <details class="group">
+                    <summary class="font-bold cursor-pointer select-none flex justify-between items-center text-[11px] uppercase tracking-wider">
+                        <span>¿Cómo jugar y ganar? ℹ️</span>
+                        <span class="transition group-open:rotate-180">▼</span>
+                    </summary>
+                    <div class="mt-2 space-y-1.5 text-[10px] border-t pt-2 border-blue-200">
+                        <p>1. El Administrador extraerá balotas con números o palabras.</p>
+                        <p>2. Cuando salga una que tengas, tócala en tu cartón para marcarla de color verde.</p>
+                        <p>3. **¡Doble Validación!** Para ganar debes tener todas las casillas marcadas AND que hayan salido en la tómbola (Cartón Lleno / Blackout).</p>
+                        <p>4. Reclamar de forma falsa descalificará tu juego y reanudará la partida de todos.</p>
+                    </div>
+                </details>
+            </div>
+
             <!-- Contenedor de la animación de la tómbola de bingo -->
             <div class="p-3 rounded-xl shadow border flex-grow flex flex-col items-center justify-center space-y-2 min-h-0 overflow-hidden" style="background-color: var(--bg-card); border-color: var(--border);">
                 <div class="text-center">
@@ -531,6 +547,21 @@
             <div class="bg-gray-800 text-white text-[10px] px-2.5 py-1 rounded-lg flex justify-between items-center shadow flex-shrink-0">
                 <span>👤: <strong id="player-meta-name" class="text-green-400"></strong></span>
                 <span>Sala: <strong id="player-meta-room" class="text-blue-400"></strong></span>
+            </div>
+
+            <!-- EXPLICACIÓN DE REGLAS DE ONBOARDING EN EL CARTÓN -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-2 text-xs text-blue-900 leading-relaxed text-left flex-shrink-0">
+                <details class="group">
+                    <summary class="font-bold cursor-pointer select-none flex justify-between items-center text-[10px] uppercase tracking-wider">
+                        <span>Guía Rápida de Juego ℹ️</span>
+                        <span class="transition group-open:rotate-180">▼</span>
+                    </summary>
+                    <div class="mt-1.5 space-y-1 text-[9px] border-t pt-1.5 border-blue-200">
+                        <p>• Marca en verde las balotas extraídas que poseas.</p>
+                        <p>• **Orden Alfabético:** Si el bingo es de palabras, tu cartón se ordena automáticamente de la A a la Z para buscar más rápido.</p>
+                        <p>• Se requiere tener el **cartón lleno** (marcado y cantado) para cantar victoria.</p>
+                    </div>
+                </details>
             </div>
 
             <!-- Panel Superior: Último elemento llamado -->
@@ -638,13 +669,6 @@
         let drumCtx = null;
         let drumAngle = 0;
         let drumSoundTicks = 0;
-
-        // PRESETS DE PALABRAS
-        const PRESETS = {
-            paises: ["Argentina", "Brasil", "Canada", "Chile", "Colombia", "Espana", "Francia", "Italia", "Japon", "Mexico", "Peru", "Alemania", "Australia", "Egipto", "India", "Portugal", "Rusia", "Suecia", "Suiza", "China", "Belgica", "Grecia", "Holanda", "Noruega", "Turquia", "Bolivia", "Ecuador", "Uruguay", "Paraguay", "Venezuela"],
-            animales: ["Perro", "Gato", "Leon", "Tigre", "Elefante", "Jirafa", "Mono", "Caballo", "Vaca", "Oveja", "Oso", "Lobo", "Zorro", "Aguila", "Delfin", "Tiburon", "Ballena", "Tortuga", "Serpiente", "Rana", "Canguro", "Cebra", "Panda", "Koala", "Conejo", "Raton", "Hipopotamo", "Rinoceronte"],
-            cosas: ["Mesa", "Silla", "Telefono", "Computadora", "Reloj", "Libro", "Lapiz", "Vaso", "Plato", "Llave", "Puerta", "Ventana", "Cama", "Lampara", "Espejo", "Camara", "Bolso", "Zapato", "Pelota", "Guitarra", "Auto", "Bicicleta", "Radio", "Television", "Taza", "Papel", "Cuaderno", "Teclado", "Monitor"]
-        };
 
         // ==========================================
         // MOTOR SINTETIZADOR DE SONIDO ENRIQUECIDO (WEB AUDIO API)
@@ -1341,6 +1365,7 @@
             }
         }
 
+        // SEPARACIÓN DE ENLACES DE INVITACIÓN
         function setupLobbyInviteUI(roomCode) {
             document.getElementById('lobby-code-display').textContent = roomCode;
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${roomCode}`;
@@ -1350,7 +1375,7 @@
 
         function copyInviteLink() {
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
-            const message = `¡Únete a mi partida de Bingo! Código: ${gameState.gameCode}. Enlace: ${inviteUrl}`;
+            const message = `¡Únete a mi partida de Bingo Realtime!\n\nCódigo de acceso de la sala:\n${gameState.gameCode}\n\nIngresa directamente haciendo clic en el siguiente enlace:\n${inviteUrl}`;
             
             navigator.clipboard.writeText(message)
                 .then(() => showToast("Invitación copiada."))
@@ -1359,7 +1384,7 @@
 
         function shareOnWhatsApp() {
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
-            const message = `¡Únete a mi partida de Bingo! Código: ${gameState.gameCode}. Enlace: ${inviteUrl}`;
+            const message = `¡Únete a mi partida de Bingo Realtime!\n\nCódigo de acceso de la sala:\n${gameState.gameCode}\n\nIngresa directamente haciendo clic en el siguiente enlace:\n${inviteUrl}`;
             const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
             window.open(waUrl, '_blank');
         }
@@ -1412,7 +1437,12 @@
             }
 
             const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
-            const cardSelection = shuffled.slice(0, sizeRequired);
+            let cardSelection = shuffled.slice(0, sizeRequired);
+
+            // ORDEN ALFABÉTICO EN TEXTO (Para el Administrador)
+            if (gameState.tipo === 'palabras') {
+                cardSelection.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+            }
 
             if (isOddDimension) {
                 cardSelection.splice(centerIndex, 0, "LIBRE");
@@ -1784,10 +1814,10 @@
                     const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
                     const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
                     
-                    // Contar aciertos reales
+                    // DOBLE VALIDACIÓN: Debe estar marcada AND haber sido extraída por la tómbola
                     const aciertosReales = matriz.filter((val, index) => {
                         if (index === centerIndex && hasOddDimension) return false; 
-                        return gameState.calledElements.includes(val);
+                        return marcadas.includes(index) && gameState.calledElements.includes(val);
                     }).length;
 
                     const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
@@ -1934,16 +1964,18 @@
             const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
             const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
             
+            // DOBLE VALIDACIÓN ESTRICTA: Marcadas AND extraídas por tómbola
+            const marcadas = jugador.casillas_marcadas || [];
             const aciertosRealesCount = matriz.filter((val, index) => {
                 if (index === centerIndex && hasOddDimension) return false;
-                return gameState.calledElements.includes(val);
+                return marcadas.includes(index) && gameState.calledElements.includes(val);
             }).length;
 
             const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
             const esBingoLegitimo = (aciertosRealesCount >= targetCellsCount);
 
             if (esBingoLegitimo) {
-                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos. ¿Confirmar victoria y finalizar partida?`, async () => {
+                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos reales y marcados. ¿Confirmar victoria y finalizar partida?`, async () => {
                     await supabaseClient
                         .from('bingo_juegos')
                         .update({ estado: 'finalizado' })
@@ -1951,7 +1983,7 @@
                 });
             } else {
                 synth.playBuzzer(); 
-                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es INCORRECTO (${aciertosRealesCount} de ${targetCellsCount} aciertos). ¿Rechazar y reanudar la partida?`, async () => {
+                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es INCORRECTO (${aciertosRealesCount} de ${targetCellsCount} aciertos reales y marcados). ¿Rechazar y reanudar la partida?`, async () => {
                     await supabaseClient
                         .from('bingo_jugadores')
                         .update({ es_ganador: false })
@@ -2120,7 +2152,12 @@
                 }
 
                 const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
-                const cardSelection = shuffled.slice(0, sizeRequired);
+                let cardSelection = shuffled.slice(0, sizeRequired);
+
+                // ORDEN ALFABÉTICO EN TEXTO (Para el Jugador)
+                if (juego.tipo === 'palabras') {
+                    cardSelection.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+                }
 
                 if (isOddDimension) {
                     cardSelection.splice(centerIndex, 0, "LIBRE");
