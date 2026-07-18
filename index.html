@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bingo Realtime Pro - Multidimensión</title>
+    <!-- Favicon ligero incorporado para evitar errores de carga 404 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
     <!-- Tailwind CSS para diseño rápido -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Cliente de Supabase -->
@@ -599,7 +601,7 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ESTADO GLOBAL DE LA APP (Usa sessionStorage para soportar independencias de pestañas)
+        // ESTADO GLOBAL DE LA APP (Usa sessionStorage para independencias de pestañas)
         let gameState = {
             role: null,           
             gameId: null,         
@@ -618,6 +620,7 @@
             adminMarkedIndices: [],
             adminWantsToPlay: true,
             configuracion: {},
+            tipo: 'numeros', // 'numeros' o 'palabras'
             winnerRegistry: [] 
         };
 
@@ -633,7 +636,6 @@
         let drumAnimFrameId = null;
         let drumCanvas = null;
         let drumCtx = null;
-        let drumBalls = [];
         let drumAngle = 0;
         let drumSoundTicks = 0;
 
@@ -874,6 +876,17 @@
                 navigator.vibrate(pattern);
             }
         }
+
+        // INICIALIZACIÓN
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleConfigFields();
+            loadPresetWords();
+            checkUrlInviteParams(); 
+            checkRestoreSessions(); // Recupera sesión activa automáticamente
+
+            drumCanvas = document.getElementById('lobby-drum-canvas');
+            drumCtx = drumCanvas.getContext('2d');
+        });
 
         // NAVEGACIÓN ENTRE VISTAS
         function switchView(viewId) {
@@ -1171,6 +1184,7 @@
                 gameState.rows = juego.filas;
                 gameState.cols = juego.columnas;
                 gameState.role = 'admin';
+                gameState.tipo = juego.tipo; // Sincroniza tipo de juego
                 gameState.configuracion = juego.configuracion || {}; // Guarda la config para evitar pérdida de datos
                 gameState.adminWantsToPlay = (juego.configuracion?.admin_juega !== false);
 
@@ -1315,6 +1329,7 @@
                 gameState.role = 'admin';
                 gameState.adminWantsToPlay = adminPlays;
                 gameState.configuracion = configData; // Almacenado de seguridad
+                gameState.tipo = type; 
 
                 setupLobbyInviteUI(roomCode);
                 switchView('view-admin-lobby');
@@ -1412,6 +1427,17 @@
         function buildAdminPlayerCardUI() {
             const grid = document.getElementById('admin-player-grid');
             grid.innerHTML = '';
+            
+            // Adaptar Grid de Administrador
+            if (gameState.tipo === 'palabras') {
+                grid.style.width = '100%';
+                grid.style.height = 'auto';
+                grid.style.aspectRatio = 'auto';
+            } else {
+                grid.style.width = 'min(85vw, 40vh)';
+                grid.style.height = 'min(85vw, 40vh)';
+                grid.style.aspectRatio = '1 / 1';
+            }
             grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
 
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -1419,12 +1445,18 @@
 
             gameState.adminCardMatrix.forEach((val, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'aspect-square flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
+                btn.className = 'flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
                 
-                if (gameState.cols > 4) {
-                    btn.className += ' text-xs';
+                if (gameState.tipo === 'palabras') {
+                    btn.classList.add('py-4', 'px-1');
                 } else {
-                    btn.className += ' text-lg';
+                    btn.classList.add('aspect-square');
+                }
+
+                if (gameState.cols > 4) {
+                    btn.className += ' text-[10px] leading-tight';
+                } else {
+                    btn.className += ' text-md';
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -1483,8 +1515,9 @@
         function listenToPlayers() {
             safelyUnsubscribeCurrent();
 
+            // Aislamiento por código de sala único
             gameState.realtimeSubscription = supabaseClient
-                .channel('lobby-updates')
+                .channel('lobby-updates-' + gameState.gameCode)
                 .on('postgres_changes', { 
                     event: 'INSERT', 
                     schema: 'public', 
@@ -1659,8 +1692,9 @@
         function listenToWinners() {
             safelyUnsubscribeCurrent();
 
+            // Aislamiento por código de sala único
             gameState.realtimeSubscription = supabaseClient
-                .channel('admin-room-updates')
+                .channel('admin-room-updates-' + gameState.gameCode)
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
                     schema: 'public', 
@@ -1973,20 +2007,17 @@
                     return;
                 }
 
-                gameState.gameId = juego.id;
-                gameState.gameCode = roomCode;
-                gameState.playerName = playerName;
-                gameState.rows = juego.filas;
-                gameState.cols = juego.columnas;
-                gameState.role = 'player';
-                gameState.configuracion = juego.configuracion || {};
-                
-                const totalCells = juego.filas * juego.columnas;
-                const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
-                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
-                
-                gameState.markedIndices = isOddDimension ? [centerIndex] : [];
+                // VALIDACIÓN DE IDENTIDAD DE SESIÓN (Evita duplicados de nombres de forma estricta)
+                const localSessionRaw = sessionStorage.getItem('bingo_player_session');
+                let localPlayerId = null;
+                if (localSessionRaw) {
+                    try {
+                        const parsed = JSON.parse(localSessionRaw);
+                        localPlayerId = parsed.playerId;
+                    } catch(e){}
+                }
 
+                // Buscar si ya existe un jugador registrado con ese nombre en la sala
                 const { data: jugadorExistente } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('*')
@@ -1995,31 +2026,67 @@
                     .maybeSingle();
 
                 if (jugadorExistente) {
-                    gameState.playerId = jugadorExistente.id;
-                    gameState.markedIndices = jugadorExistente.casillas_marcadas || [];
+                    // Si el nombre existe pero coincide con nuestro ID local, permitimos reconectar
+                    if (localPlayerId && jugadorExistente.id === localPlayerId) {
+                        gameState.gameId = juego.id;
+                        gameState.gameCode = roomCode;
+                        gameState.playerName = playerName;
+                        gameState.rows = juego.filas;
+                        gameState.cols = juego.columnas;
+                        gameState.role = 'player';
+                        gameState.tipo = juego.tipo; // Almacena el tipo
+                        gameState.configuracion = juego.configuracion || {};
 
-                    const { data: cartonExistente } = await supabaseClient
-                        .from('bingo_cartones')
-                        .select('matriz')
-                        .eq('jugador_id', jugadorExistente.id)
-                        .single();
+                        gameState.playerId = jugadorExistente.id;
+                        gameState.markedIndices = jugadorExistente.casillas_marcadas || [];
 
-                    gameState.cardMatrix = cartonExistente.matriz;
-                    savePlayerSessionToLocalStorage();
+                        const { data: cartonExistente } = await supabaseClient
+                            .from('bingo_cartones')
+                            .select('matriz')
+                            .eq('jugador_id', jugadorExistente.id)
+                            .single();
 
-                    if (juego.estado === 'esperando') {
-                        document.getElementById('player-lobby-room').textContent = roomCode;
-                        document.getElementById('player-lobby-name').textContent = playerName;
-                        switchView('view-player-lobby');
-                    } else if (juego.estado === 'jugando') {
-                        startGameForPlayer();
+                        gameState.cardMatrix = cartonExistente.matriz;
+                        savePlayerSessionToLocalStorage();
+
+                        if (juego.estado === 'esperando') {
+                            document.getElementById('player-lobby-room').textContent = roomCode;
+                            document.getElementById('player-lobby-name').textContent = playerName;
+                            switchView('view-player-lobby');
+                        } else if (juego.estado === 'jugando') {
+                            startGameForPlayer();
+                        }
+
+                        listenToGameStart();
+                        updatePlayerCalledElements(juego.elementos_llamados);
+                        showToast("Reconexión de sesión exitosa.");
+                        return;
+                    } else {
+                        // El nombre ya lo tiene alguien más (Duplicación prohibida)
+                        synth.playBuzzer();
+                        showCustomAlert(
+                            "APODO DUPLICADO ⚠️", 
+                            `El nombre de jugador "${playerName}" ya está ocupado por otra persona en esta sala. Por favor, elige un nombre diferente.`
+                        );
+                        return;
                     }
-
-                    listenToGameStart();
-                    updatePlayerCalledElements(juego.elementos_llamados);
-                    showToast("Sesión recuperada.");
-                    return; 
                 }
+
+                // Proceder con un nuevo registro de jugador
+                gameState.gameId = juego.id;
+                gameState.gameCode = roomCode;
+                gameState.playerName = playerName;
+                gameState.rows = juego.filas;
+                gameState.cols = juego.columnas;
+                gameState.role = 'player';
+                gameState.tipo = juego.tipo; // Almacena el tipo
+                gameState.configuracion = juego.configuracion || {};
+                
+                const totalCells = juego.filas * juego.columnas;
+                const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
+                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+                
+                gameState.markedIndices = isOddDimension ? [centerIndex] : [];
 
                 const { data: jugador, error: errJugador } = await supabaseClient
                     .from('bingo_jugadores')
@@ -2095,7 +2162,8 @@
                 markedIndices: gameState.markedIndices,
                 rows: gameState.rows,
                 cols: gameState.cols,
-                configuracion: gameState.configuracion
+                configuracion: gameState.configuracion,
+                tipo: gameState.tipo
             };
             sessionStorage.setItem('bingo_player_session', JSON.stringify(sessionData));
         }
@@ -2126,6 +2194,7 @@
                     gameState.markedIndices = session.markedIndices || [];
                     gameState.rows = session.rows;
                     gameState.cols = session.cols;
+                    gameState.tipo = juego.tipo; // Restaura tipo
                     gameState.configuracion = session.configuracion || juego.configuracion || {};
                     gameState.role = 'player';
 
@@ -2152,8 +2221,9 @@
         function listenToGameStart() {
             safelyUnsubscribeCurrent();
 
+            // Aislamiento por código de sala único
             gameState.realtimeSubscription = supabaseClient
-                .channel('game-state-updates')
+                .channel('game-state-updates-' + gameState.gameCode)
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
                     schema: 'public', 
@@ -2243,6 +2313,17 @@
         function buildPlayerCardUI() {
             const grid = document.getElementById('player-card-grid');
             grid.innerHTML = '';
+            
+            // Adaptador Responsivo de Grid (Sugerencia de visualización Palabras vs Números)
+            if (gameState.tipo === 'palabras') {
+                grid.style.width = '100%';
+                grid.style.height = 'auto';
+                grid.style.aspectRatio = 'auto';
+            } else {
+                grid.style.width = 'min(85vw, 40vh)';
+                grid.style.height = 'min(85vw, 40vh)';
+                grid.style.aspectRatio = '1 / 1';
+            }
             grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
 
             const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
@@ -2255,10 +2336,10 @@
                 
                 btn.className += ` ${getWordFontSizeClass(val)}`;
                 
-                if (gameState.cols > 4) {
-                    btn.classList.add('aspect-square');
+                if (gameState.tipo === 'palabras') {
+                    btn.classList.add('py-4', 'px-1');
                 } else {
-                    btn.classList.add('py-3.5'); 
+                    btn.classList.add('aspect-square');
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -2418,26 +2499,12 @@
         }
 
         // ==========================================
-        // ANIMACIÓN DE TÓMBOLA / CAGE DE BINGO
+        // ANIMACIÓN DE BALOTA FLOTANTE (REDISEÑO)
         // ==========================================
         function startDrumAnimation() {
             drumCanvas.width = drumCanvas.offsetWidth;
             drumCanvas.height = drumCanvas.offsetHeight;
             
-            drumBalls = [];
-            const colors = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
-            
-            for (let i = 0; i < 15; i++) {
-                drumBalls.push({
-                    x: drumCanvas.width / 2 + (Math.random() * 40 - 20),
-                    y: drumCanvas.height / 2 + (Math.random() * 40 - 20),
-                    vx: Math.random() * 3 - 1.5,
-                    vy: Math.random() * 3 - 1.5,
-                    radius: 7,
-                    color: colors[i % colors.length]
-                });
-            }
-
             if (drumAnimFrameId) cancelAnimationFrame(drumAnimFrameId);
             animateDrum();
         }
@@ -2454,83 +2521,52 @@
             
             const centerX = drumCanvas.width / 2;
             const centerY = drumCanvas.height / 2;
-            const cageRadius = Math.min(drumCanvas.width, drumCanvas.height) * 0.38;
+            
+            drumAngle += 0.04;
+            // Cálculo suave de elevación sinusoidal
+            const hoverY = Math.sin(drumAngle) * 12;
 
-            // jaula exterior
-            drumCtx.strokeStyle = '#9ca3af';
-            drumCtx.lineWidth = 3;
+            // 1. Dibujar sombra dinámica en el "suelo"
+            const shadowWidth = 32 - (hoverY * 0.6);
+            const shadowAlpha = 0.15 - (hoverY * 0.005);
             drumCtx.beginPath();
-            drumCtx.arc(centerX, centerY, cageRadius, 0, Math.PI * 2);
-            drumCtx.stroke();
+            drumCtx.ellipse(centerX, centerY + 45, shadowWidth, 5, 0, 0, Math.PI * 2);
+            drumCtx.fillStyle = `rgba(0, 0, 0, ${Math.max(0, shadowAlpha)})`;
+            drumCtx.fill();
 
-            // soportes mecánicos
-            drumCtx.strokeStyle = '#6b7280';
-            drumCtx.lineWidth = 4;
+            // 2. Aura brillante posterior
+            drumCtx.save();
+            drumCtx.shadowBlur = 24;
+            drumCtx.shadowColor = 'rgba(59, 130, 246, 0.4)';
+
+            // 3. Renderizar Balota con Gradiente Esférico (Efecto 3D)
+            const ballRadius = 30;
+            const ballGrad = drumCtx.createRadialGradient(
+                centerX - 8, centerY + hoverY - 8, 4,
+                centerX, centerY + hoverY, ballRadius
+            );
+            ballGrad.addColorStop(0, '#93C5FD'); // Azul claro brillante
+            ballGrad.addColorStop(0.3, '#3B82F6'); // Azul base
+            ballGrad.addColorStop(1, '#1D4ED8'); // Sombra oscura
+            
             drumCtx.beginPath();
-            drumCtx.moveTo(centerX - cageRadius - 10, centerY + cageRadius + 5);
-            drumCtx.lineTo(centerX - cageRadius + 5, centerY);
-            drumCtx.lineTo(centerX, centerY);
-            drumCtx.lineTo(centerX + cageRadius - 5, centerY);
-            drumCtx.lineTo(centerX + cageRadius + 10, centerY + cageRadius + 5);
-            drumCtx.stroke();
+            drumCtx.arc(centerX, centerY + hoverY, ballRadius, 0, Math.PI * 2);
+            drumCtx.fillStyle = ballGrad;
+            drumCtx.fill();
+            drumCtx.restore();
 
-            // líneas internas giratorias
-            drumAngle += 0.02;
-            drumCtx.strokeStyle = '#d1d5db';
-            drumCtx.lineWidth = 1;
-            for (let i = 0; i < 8; i++) {
-                const lineAngle = drumAngle + (i * Math.PI / 4);
-                drumCtx.beginPath();
-                drumCtx.moveTo(centerX, centerY);
-                drumCtx.lineTo(
-                    centerX + Math.cos(lineAngle) * cageRadius,
-                    centerY + Math.sin(lineAngle) * cageRadius
-                );
-                drumCtx.stroke();
-            }
+            // 4. Panel interior blanco
+            drumCtx.beginPath();
+            drumCtx.arc(centerX, centerY + hoverY, 14, 0, Math.PI * 2);
+            drumCtx.fillStyle = '#FFFFFF';
+            drumCtx.fill();
 
-            // Balotas rebotando
-            drumSoundTicks++;
-            drumBalls.forEach(ball => {
-                ball.x += ball.vx;
-                ball.y += ball.vy;
-
-                const dx = ball.x - centerX;
-                const dy = ball.y - centerY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist + ball.radius > cageRadius) {
-                    const normalX = dx / dist;
-                    const normalY = dy / dist;
-
-                    ball.x = centerX + normalX * (cageRadius - ball.radius);
-                    ball.y = centerY + normalY * (cageRadius - ball.radius);
-
-                    const dot = ball.vx * normalX + ball.vy * normalY;
-                    ball.vx -= 2 * dot * normalX;
-                    ball.vy -= 2 * dot * normalY;
-
-                    ball.vx += -normalY * 0.5;
-                    ball.vy += normalX * 0.5;
-
-                    // Reproduce sonido rítmico de tómbola esporádicamente
-                    if (drumSoundTicks % 25 === 0 && Math.random() > 0.6) {
-                        synth.playTick();
-                    }
-                }
-
-                // Dibujar balota
-                drumCtx.beginPath();
-                drumCtx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-                drumCtx.fillStyle = ball.color;
-                drumCtx.fill();
-                
-                // Brillo de balota 3D
-                drumCtx.beginPath();
-                drumCtx.arc(ball.x - 2, ball.y - 2, 2, 0, Math.PI * 2);
-                drumCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                drumCtx.fill();
-            });
+            // 5. Letra decorativa centrado
+            drumCtx.fillStyle = '#1E3A8A';
+            drumCtx.font = 'bold 12px sans-serif';
+            drumCtx.textAlign = 'center';
+            drumCtx.textBaseline = 'middle';
+            drumCtx.fillText('BINGO', centerX, centerY + hoverY);
 
             drumAnimFrameId = requestAnimationFrame(animateDrum);
         }
