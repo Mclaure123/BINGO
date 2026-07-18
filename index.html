@@ -70,10 +70,11 @@
     <!-- Encabezado de la Aplicación -->
     <header class="bg-blue-600 text-white p-3 shadow-md text-center z-10 flex justify-between items-center flex-shrink-0">
         <div class="w-8"></div>
-        <div class="text-center">
-            <h1 class="text-xl font-bold">Bingo Realtime</h1>
+        <div class="text-center cursor-pointer" onclick="handleTitleTap()">
+            <h1 class="text-2xl font-bold tracking-wide select-none">Bingo Realtime</h1>
             <p class="text-[10px] opacity-90 font-medium font-mono">Soporte Multidimensión</p>
         </div>
+        <!-- Botón de salida rápida global en el header -->
         <button onclick="confirmExitGame()" class="text-white hover:text-red-200 p-1" title="Salir/Menú Principal">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
         </button>
@@ -82,14 +83,12 @@
     <!-- Contenedor Principal (Contenido estrictamente escalado) -->
     <main class="flex-grow p-2.5 max-w-md mx-auto w-full flex flex-col justify-between z-10 overflow-hidden">
         
-        <!-- SECCIÓN 1: SELECCIÓN DE ROL (PANTALLA DE INICIO) -->
+        <!-- SECCIÓN 1: PANTALLA DE INICIO (Administrador oculto tras 5 toques en el título) -->
         <div id="view-welcome" class="space-y-4 my-auto">
             <div class="bg-white p-6 rounded-xl shadow-md text-center space-y-4">
-                <h2 class="text-lg font-bold">¿Cómo deseas unirte?</h2>
+                <h2 class="text-lg font-bold">Bienvenido al Bingo</h2>
+                <p class="text-xs text-gray-500">Ingresa como jugador para unirte a una partida en curso o escanea un código QR.</p>
                 <div class="grid grid-cols-1 gap-3">
-                    <button onclick="handleAdminAccess()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-bold transition">
-                        Panel de Administrador
-                    </button>
                     <button onclick="switchView('view-player-join')" class="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-bold transition">
                         Unirse como Jugador
                     </button>
@@ -131,22 +130,43 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 1.8: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS) -->
+        <!-- SECCIÓN 1.8: DASHBOARD DEL ADMINISTRADOR (TABLA VISUAL DE SESIONES CON FLECHAS DE SCROLL) -->
         <div id="view-admin-dashboard" class="hidden space-y-3 flex flex-col h-full overflow-hidden">
             <div class="bg-white p-3 rounded-xl shadow-md flex-shrink-0 flex justify-between items-center">
                 <div>
-                    <h2 class="text-md font-bold text-blue-600">Tus Salas</h2>
-                    <p class="text-[10px] text-gray-400 font-medium">Administra tus juegos activos</p>
+                    <h2 class="text-md font-bold text-blue-600">Panel de Salas</h2>
+                    <p class="text-[10px] text-gray-400 font-medium">Historial y control de sesiones activas</p>
                 </div>
                 <button onclick="switchView('view-admin-setup')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition">
                     + Crear Sala
                 </button>
             </div>
 
-            <!-- Contenedor de salas -->
-            <div class="flex-grow overflow-y-auto min-h-0">
-                <div id="admin-rooms-list" class="space-y-2 p-1">
-                    <!-- Se llena dinámicamente -->
+            <!-- Tabla responsiva -->
+            <div class="relative flex-grow min-h-0 flex flex-col bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+                <!-- Flechas simuladoras de scroll vertical -->
+                <button onclick="scrollContainer('admin-rooms-table-wrap', 'up', 120)" class="absolute top-10 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1 z-20 hover:bg-opacity-100 shadow transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                </button>
+                <button onclick="scrollContainer('admin-rooms-table-wrap', 'down', 120)" class="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1 z-20 hover:bg-opacity-100 shadow transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <div id="admin-rooms-table-wrap" class="flex-grow overflow-y-auto min-h-0">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-[9px] tracking-wider border-b sticky top-0 z-10">
+                                <th class="p-3">Nombre</th>
+                                <th class="p-3 text-center">Código</th>
+                                <th class="p-3 text-center">Tamaño</th>
+                                <th class="p-3 text-center">Estado</th>
+                                <th class="p-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-rooms-table-body" class="divide-y divide-gray-100">
+                            <!-- Llenado dinámico -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -217,27 +237,57 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 3: LOBBY DE ESPERA DEL ADMINISTRADOR -->
-        <div id="view-admin-lobby" class="hidden space-y-4 my-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md text-center space-y-4">
-                <h2 class="text-md font-bold text-gray-500">SALA CREADA</h2>
-                <div class="bg-blue-50 py-4 rounded-lg">
-                    <p class="text-xs text-blue-500 uppercase tracking-wider font-semibold">Código para compartir</p>
-                    <p id="lobby-code-display" class="text-4xl font-extrabold text-blue-600 tracking-widest">- - - -</p>
+        <!-- SECCIÓN 3: LOBBY DE ESPERA DEL ADMINISTRADOR (CON QR E INVITACIÓN) -->
+        <div id="view-admin-lobby" class="hidden space-y-3 flex flex-col h-full overflow-hidden">
+            <div class="bg-white p-4 rounded-xl shadow-md text-center space-y-3 flex-shrink-0">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Sala Creada con Éxito</h2>
+                
+                <div class="bg-blue-50 py-2.5 rounded-lg border border-blue-200">
+                    <p class="text-[10px] text-blue-500 uppercase tracking-wider font-semibold">Código para Ingresar</p>
+                    <div class="flex items-center justify-center space-x-2 mt-1">
+                        <p id="lobby-code-display" class="text-3xl font-extrabold text-blue-600 tracking-wider">- - - -</p>
+                        <button onclick="copyInviteLink()" class="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition" title="Copiar Enlace">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="font-bold text-sm text-left mb-2">Jugadores Conectados (<span id="player-count">0</span>):</h3>
-                    <ul id="player-list" class="divide-y text-left max-h-40 overflow-y-auto bg-gray-50 rounded-lg p-2 text-sm">
+
+                <!-- QR Autogenerado -->
+                <div class="bg-gray-50 p-2 rounded-lg border flex flex-col items-center">
+                    <p class="text-[9px] text-gray-400 uppercase font-bold mb-1.5">Escanea para unirte directo</p>
+                    <img id="lobby-qr-code" src="" alt="Código QR de Acceso" class="w-24 h-24 border p-1 bg-white rounded">
+                </div>
+
+                <div class="flex space-x-2">
+                    <button onclick="shareOnWhatsApp()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center space-x-1.5">
+                        <span>Compartir por WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Listado de jugadores -->
+            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0">
+                <h3 class="font-bold text-xs text-left mb-2 text-gray-500 flex-shrink-0">Participantes Conectados (<span id="player-count">0</span>):</h3>
+                <div class="flex-grow overflow-y-auto min-h-0 relative">
+                    <!-- Flechas de navegación para listado del lobby -->
+                    <button onclick="scrollContainer('player-list', 'up', 60)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                    </button>
+                    <button onclick="scrollContainer('player-list', 'down', 60)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <ul id="player-list" class="divide-y text-left bg-gray-50 rounded-lg p-2 text-xs h-full overflow-y-auto">
                         <li class="text-gray-500 text-center py-2">Esperando participantes...</li>
                     </ul>
                 </div>
-                <button onclick="startGameSession()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition">
-                    Iniciar Partida
-                </button>
+                <div class="flex space-x-2 mt-2 flex-shrink-0">
+                    <button onclick="loadAdminDashboard()" class="w-1/3 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-lg text-xs font-bold transition">Volver al Panel</button>
+                    <button onclick="startGameSession()" class="w-2/3 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition">Iniciar Partida</button>
+                </div>
             </div>
         </div>
 
-        <!-- SECCIÓN 4: PANTALLA DIVIDIDA DEL ADMINISTRADOR (EN JUEGO - VIEWPORT FIT) -->
+        <!-- SECCIÓN 4: PANTALLA DIVIDIDA DEL ADMINISTRADOR (EN JUEGO) -->
         <div id="view-admin-play" class="hidden flex flex-col h-full space-y-2.5 overflow-hidden">
             <!-- TARJETA SUPERIOR: Extracción -->
             <div class="bg-white p-3 rounded-xl shadow border flex-shrink-0 space-y-2">
@@ -275,24 +325,43 @@
                     <button id="tab-admin-card" onclick="switchAdminTab('card')" class="w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400">MI CARTÓN (JUGAR)</button>
                 </div>
                 
-                <div class="flex-grow overflow-y-auto min-h-0">
-                    <div id="admin-tab-board-view" class="h-full space-y-3">
-                        <!-- MONITOREO DE PROGRESO DE JUGADORES -->
-                        <div class="bg-blue-50 p-2 rounded-lg border border-blue-200">
-                            <h4 class="text-[9px] font-bold text-blue-800 uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
-                            <div id="admin-progress-list" class="space-y-1 text-[11px]">
-                                <span class="text-gray-400 italic">Esperando actividad...</span>
+                <div class="flex-grow overflow-y-auto min-h-0 relative">
+                    <!-- Flechas de navegación para tablero del admin -->
+                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'up', 100)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                    </button>
+                    <button onclick="scrollContainer('admin-play-scroll-wrap', 'down', 100)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+
+                    <div id="admin-play-scroll-wrap" class="h-full overflow-y-auto pr-2">
+                        <!-- Sub-vista A: Tablero General -->
+                        <div id="admin-tab-board-view" class="space-y-3">
+                            <!-- MONITOREO DE PROGRESO DE JUGADORES -->
+                            <div class="bg-blue-50 p-2 rounded-lg border border-blue-200">
+                                <h4 class="text-[9px] font-bold text-blue-800 uppercase tracking-wider mb-1">Monitoreo de Jugadores</h4>
+                                <div id="admin-progress-list" class="space-y-1 text-[11px]">
+                                    <span class="text-gray-400 italic">Esperando actividad...</span>
+                                </div>
                             </div>
+
+                            <div id="admin-board-grid" class="grid grid-cols-5 gap-1 p-0.5">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                            
+                            <!-- Botón de retorno al panel principal -->
+                            <button onclick="returnToDashboardFromPlay()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg text-xs font-bold transition">
+                                Volver al Panel de Salas
+                            </button>
                         </div>
 
-                        <div id="admin-board-grid" class="grid grid-cols-5 gap-1 p-0.5">
-                            <!-- Se llena dinámicamente -->
-                        </div>
-                    </div>
-
-                    <div id="admin-tab-card-view" class="hidden h-full">
-                        <div id="admin-player-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1" style="display: grid;">
-                            <!-- Cartón personal de juego del administrador -->
+                        <!-- Sub-vista B: Mi Cartón (Híbrido) -->
+                        <div id="admin-tab-card-view" class="hidden">
+                            <div class="flex items-center justify-center py-4">
+                                <div id="admin-player-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1.5" style="display: grid;">
+                                    <!-- Cartón personal de juego del administrador -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -318,57 +387,94 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY) -->
-        <div id="view-player-lobby" class="hidden space-y-4 text-center my-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
-                <div class="animate-bounce inline-block p-4 bg-green-100 rounded-full text-green-600">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <!-- SECCIÓN 6: ESPERA DEL JUGADOR (LOBBY + MINIJUEGO BINGO BIRD) -->
+        <div id="view-player-lobby" class="hidden space-y-3 flex flex-col h-full overflow-hidden justify-between">
+            <div class="bg-white p-3 rounded-xl shadow text-center space-y-2 flex-shrink-0">
+                <div class="animate-bounce inline-block p-2.5 bg-green-100 rounded-full text-green-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <h2 class="text-xl font-bold text-gray-700">¡Ya estás dentro!</h2>
-                <p class="text-sm text-gray-500">Esperando que el administrador inicie la partida. Tu cartón ya ha sido asignado y guardado correctamente.</p>
-                <div class="border-t pt-4">
-                    <p class="text-xs text-gray-400">Sala: <span id="player-lobby-room" class="font-bold"></span></p>
-                    <p class="text-xs text-gray-400">Nombre: <span id="player-lobby-name" class="font-bold"></span></p>
+                <h2 class="text-md font-bold text-gray-700">¡Conectado! Esperando inicio...</h2>
+                <div class="text-[10px] text-gray-400 flex justify-center space-x-2 border-t pt-1.5">
+                    <span>Sala: <strong id="player-lobby-room" class="font-bold text-blue-600"></strong></span>
+                    <span>•</span>
+                    <span>Jugador: <strong id="player-lobby-name" class="font-bold text-green-600"></strong></span>
+                </div>
+            </div>
+
+            <!-- Contenedor del minijuego para matar el aburrimiento -->
+            <div class="bg-white p-3 rounded-xl shadow border flex-grow flex flex-col items-center justify-center space-y-2 min-h-0 overflow-hidden">
+                <div class="text-center">
+                    <h3 class="text-xs font-black text-blue-600 uppercase tracking-wider">🎮 Minijuego: Bingo Bird</h3>
+                    <p class="text-[9px] text-gray-400">¡Toca el recuadro gris para saltar y esquivar!</p>
+                </div>
+                
+                <!-- Lienzo del juego adaptable a la ventana móvil -->
+                <canvas id="lobby-game-canvas" class="border-2 border-gray-300 rounded bg-gray-50 cursor-pointer w-full max-w-[280px] h-32"></canvas>
+                
+                <div class="flex items-center justify-between w-full max-w-[280px] text-[10px] font-bold text-gray-500">
+                    <span>Puntos: <strong id="game-score-display" class="text-blue-600">0</strong></span>
+                    <button onclick="resetLobbyGame()" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px]">Reiniciar juego</button>
                 </div>
             </div>
         </div>
 
-        <!-- SECCIÓN 7: CARTÓN DE JUEGO (JUGADOR ACTIVO - VIEWPORT FIT) -->
-        <div id="view-player-play" class="hidden flex flex-col h-full space-y-2.5 overflow-hidden">
+        <!-- SECCIÓN 7: CARTÓN DE JUEGO (JUGADOR ACTIVO) -->
+        <div id="view-player-play" class="hidden space-y-2 flex flex-col h-full overflow-hidden">
             <!-- Banner superior de estado -->
             <div class="bg-gray-800 text-white text-[10px] px-2.5 py-1 rounded-lg flex justify-between items-center shadow flex-shrink-0">
                 <span>👤: <strong id="player-meta-name" class="text-green-400"></strong></span>
                 <span>Sala: <strong id="player-meta-room" class="text-blue-400"></strong></span>
             </div>
 
-            <!-- Panel Superior: Último elemento llamado (Compacto) -->
-            <div id="player-called-box" class="bg-white p-3 rounded-xl shadow border flex-shrink-0 space-y-2">
+            <!-- Panel Superior: Último elemento llamado -->
+            <div id="player-called-box" class="bg-white p-2.5 rounded-xl shadow border flex-shrink-0 space-y-1">
                 <div class="flex items-center justify-between">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Último llamado</span>
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                 </div>
                 
-                <div id="player-called-display" class="text-3xl font-extrabold text-blue-600 text-center tracking-tight py-0.5">
+                <div id="player-called-display" class="text-3xl font-extrabold text-blue-600 text-center tracking-tight">
                     Esperando...
                 </div>
 
-                <div class="border-t pt-1.5">
-                    <span class="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Llamados anteriores</span>
-                    <div id="player-history-list" class="flex space-x-1.5 overflow-x-auto py-0.5 px-0.5 scrollbar-thin">
+                <!-- Historial Deslizable con flechas horizontales de navegación -->
+                <div class="border-t pt-1 relative">
+                    <button onclick="scrollContainer('player-history-list', 'left', 60)" class="absolute left-0 bottom-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button onclick="scrollContainer('player-history-list', 'right', 60)" class="absolute right-0 bottom-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                    <div id="player-history-list" class="flex space-x-1.5 overflow-x-auto py-0.5 px-6 scrollbar-thin">
                         <span class="text-gray-400 text-[10px] italic">Ninguno aún</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel Central: Cartón (Ocupa el espacio disponible de forma controlada) -->
-            <div class="bg-white p-3 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0">
-                <div id="player-card-grid" class="p-1.5 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid;">
-                    <!-- Casillas autogeneradas -->
+            <!-- PANEL INTERMEDIO: Tablero de Control Completo con flechas de navegación -->
+            <div class="bg-white p-2 rounded-xl shadow border flex-shrink-0 space-y-1 relative">
+                <button onclick="scrollContainer('player-all-called-list', 'up', 40)" class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                </button>
+                <button onclick="scrollContainer('player-all-called-list', 'down', 40)" class="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-0.5 z-20 opacity-80 hover:opacity-100 shadow transition">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <span class="text-[8px] font-bold text-gray-400 uppercase block">Tablero de Control (Todos los llamados)</span>
+                <div id="player-all-called-list" class="flex flex-wrap gap-1 max-h-12 overflow-y-auto py-0.5 pr-6">
+                    <span class="text-gray-400 text-[9px] italic">Esperando que inicie el juego...</span>
+                </div>
+            </div>
+
+            <!-- Panel Central: Cartón responsivo adaptado según tipo de juego (Palabras o Números) -->
+            <div class="bg-white p-2 rounded-xl shadow border flex-grow overflow-hidden flex items-center justify-center min-h-0">
+                <div id="player-card-grid" class="p-1 bg-gray-100 rounded-lg gap-1.5 w-full max-h-full" style="display: grid; width: min(65vw, 28vh); height: min(65vw, 28vh);">
+                    <!-- Casillas autogeneradas con Javascript -->
                 </div>
             </div>
 
             <!-- Panel Inferior: Botón de Bingo -->
-            <button onclick="claimBingo()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-md shadow hover:shadow-md transition-all duration-300 w-full animate-pulse tracking-wide flex-shrink-0">
+            <button onclick="claimBingo()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow hover:shadow-md transition-all duration-300 w-full animate-pulse tracking-wide flex-shrink-0">
                 📢 ¡CANTAR BINGO!
             </button>
         </div>
@@ -405,7 +511,8 @@
             authMode: 'login',
             adminCardMatrix: [],  
             adminMarkedIndices: [],
-            adminWantsToPlay: true 
+            adminWantsToPlay: true,
+            winnerRegistry: [] // Registro ordenado de ganadores locales de la sesión (ej. [ID1, ID2])
         };
 
         // VARIABLES DE CONTROL DE AUTOMATIZACIÓN Y ANIMACIÓN
@@ -413,6 +520,16 @@
         let countdownTimer = null;
         let secondsLeft = 15;
         let confettiAnimationId = null;
+        let titleTapCount = 0; 
+
+        // VARIABLES DE CONTROL DEL MINIJUEGO "BINGO BIRD" (LOBBY DEL JUGADOR)
+        let lobbyGameIntervalId = null;
+        let lobbyGameCanvas = null;
+        let lobbyGameCtx = null;
+        let bird = { x: 40, y: 50, radius: 6, velocity: 0, gravity: 0.25, jumpForce: -4 };
+        let pipes = [];
+        let gameScore = 0;
+        let isLobbyGameOver = false;
 
         // PRESETS DE PALABRAS
         const PRESETS = {
@@ -426,6 +543,16 @@
             toggleConfigFields();
             loadPresetWords();
             checkRestoreSessions(); 
+            checkUrlInviteParams(); 
+
+            // Registrar oyente táctil para el minijuego Bingo Bird
+            lobbyGameCanvas = document.getElementById('lobby-game-canvas');
+            lobbyGameCtx = lobbyGameCanvas.getContext('2d');
+            lobbyGameCanvas.addEventListener('mousedown', handleLobbyGameClick);
+            lobbyGameCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleLobbyGameClick();
+            });
         });
 
         // NAVEGACIÓN ENTRE VISTAS
@@ -438,6 +565,13 @@
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(viewId).classList.remove('hidden');
+
+            // Detener o arrancar el minijuego según la sección en la que esté el jugador
+            if (viewId === 'view-player-lobby') {
+                startLobbyGame();
+            } else {
+                stopLobbyGame();
+            }
         }
 
         // CONTROL DE SALIDA MANUAL DEL JUEGO (BOTÓN ESCAPE)
@@ -447,6 +581,43 @@
                 localStorage.removeItem('bingo_player_session');
                 localStorage.removeItem('bingo_admin_session');
                 location.reload();
+            }
+        }
+
+        // ACTIVADOR DE ADMINISTRADOR OCULTO (5 toques en el título principal)
+        function handleTitleTap() {
+            titleTapCount++;
+            if (titleTapCount >= 5) {
+                titleTapCount = 0;
+                showToast("Acceso oculto activado.");
+                handleAdminAccess();
+            }
+        }
+
+        // PRELLENAR CÓDIGO POR QR / ENLACE DE INVITACIÓN
+        function checkUrlInviteParams() {
+            const params = new URLSearchParams(window.location.search);
+            const sala = params.get('sala');
+            if (sala) {
+                switchView('view-player-join');
+                document.getElementById('join-room-code').value = sala.toUpperCase();
+                showToast(`Código de sala "${sala}" cargado automáticamente.`);
+            }
+        }
+
+        // FUNCIÓN CONTROLADORA DE SCROLL MANUAL CON FLECHAS
+        function scrollContainer(containerId, direction, amount = 100) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            if (direction === 'left') {
+                container.scrollBy({ left: -amount, behavior: 'smooth' });
+            } else if (direction === 'right') {
+                container.scrollBy({ left: amount, behavior: 'smooth' });
+            } else if (direction === 'up') {
+                container.scrollBy({ top: -amount, behavior: 'smooth' });
+            } else if (direction === 'down') {
+                container.scrollBy({ top: amount, behavior: 'smooth' });
             }
         }
 
@@ -495,6 +666,15 @@
             }, 3000);
         }
 
+        // FUNCIÓN AUXILIAR DE CIFRADO DEL CLIENTE (SHA-256)
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         // ==========================================
         // SECCIÓN: AUTENTICACIÓN CON BASE DE DATOS (SUPABASE)
         // ==========================================
@@ -529,14 +709,17 @@
 
         async function submitAdminAuth() {
             const usuario = document.getElementById('auth-username').value.trim();
-            const contrasena = document.getElementById('auth-password').value.trim();
+            const contrasenaPlana = document.getElementById('auth-password').value.trim();
 
-            if (!usuario || !contrasena) {
+            if (!usuario || !contrasenaPlana) {
                 showToast("Por favor llena los campos obligatorios");
                 return;
             }
 
             try {
+                // Cifrado local de contraseña
+                const contrasenaCifrada = await hashPassword(contrasenaPlana);
+
                 if (gameState.authMode === 'register') {
                     const nombre = document.getElementById('auth-fullname').value.trim() || 'Admin';
                     
@@ -553,12 +736,13 @@
                         return;
                     }
 
+                    // Insertar en Supabase
                     const { error: insertError } = await supabaseClient
                         .from('bingo_administradores')
                         .insert([
                             {
                                 usuario: usuario,
-                                contrasena: contrasena,
+                                contrasena: contrasenaCifrada,
                                 datos: { nombre_completo: nombre }
                             }
                         ]);
@@ -569,11 +753,12 @@
                     gameState.authMode = 'register';
                     toggleAuthMode(); 
                 } else {
+                    // Consultar credenciales cifradas en Supabase
                     const { data, error: loginError } = await supabaseClient
                         .from('bingo_administradores')
                         .select('*')
                         .eq('usuario', usuario)
-                        .eq('contrasena', contrasena)
+                        .eq('contrasena', contrasenaCifrada)
                         .maybeSingle();
 
                     if (loginError) throw loginError;
@@ -593,7 +778,7 @@
         }
 
         // ==========================================
-        // SECCIÓN: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS)
+        // SECCIÓN: DASHBOARD DEL ADMINISTRADOR (LISTADO Y BORRADO DE SALAS - TABLA VISUAL)
         // ==========================================
 
         async function loadAdminDashboard() {
@@ -605,14 +790,16 @@
 
                 if (error) throw error;
 
-                const listContainer = document.getElementById('admin-rooms-list');
-                listContainer.innerHTML = '';
+                const tableBody = document.getElementById('admin-rooms-table-body');
+                tableBody.innerHTML = '';
 
                 if (salas.length === 0) {
-                    listContainer.innerHTML = `
-                        <div class="bg-white p-6 rounded-xl border border-dashed text-center text-gray-500 text-sm">
-                            No tienes salas creadas. ¡Comienza creando tu primera sala de bingo!
-                        </div>`;
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-gray-500 italic">
+                                No tienes salas creadas en Supabase. Haz clic en "+ Crear Sala" arriba para iniciar una.
+                            </td>
+                        </tr>`;
                 } else {
                     salas.forEach(sala => {
                         const statusColors = {
@@ -621,29 +808,28 @@
                             finalizado: 'bg-gray-100 text-gray-800'
                         };
 
-                        const card = document.createElement('div');
-                        card.className = 'bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-between items-center';
-                        card.innerHTML = `
-                            <div class="space-y-1">
-                                <h4 class="font-bold text-gray-800 text-sm">${sala.nombre_sesion}</h4>
-                                <div class="flex items-center space-x-1.5 text-xs text-gray-400 font-mono">
-                                    <span>Código: <strong>${sala.codigo_sala}</strong></span>
-                                    <span>•</span>
-                                    <span>Formato: ${sala.filas}x${sala.columnas}</span>
-                                </div>
-                                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[sala.estado] || 'bg-gray-100'} uppercase">
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-gray-50 border-b border-gray-100";
+                        tr.innerHTML = `
+                            <td class="p-3 font-bold text-gray-800 max-w-[120px] truncate" title="${sala.nombre_sesion}">${sala.nombre_sesion}</td>
+                            <td class="p-3 text-center font-mono font-bold text-blue-600">${sala.codigo_sala}</td>
+                            <td class="p-3 text-center text-gray-500 font-semibold">${sala.filas}x${sala.columnas}</td>
+                            <td class="p-3 text-center">
+                                <span class="inline-block text-[9px] font-black px-2 py-0.5 rounded-full ${statusColors[sala.estado] || 'bg-gray-100'} uppercase">
                                     ${sala.estado}
                                 </span>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="resumeAdminRoom('${sala.id}')" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition" title="Ingresar">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                </button>
-                                <button onclick="deleteAdminRoom('${sala.id}')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition" title="Eliminar">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>`;
-                        listContainer.appendChild(card);
+                            </td>
+                            <td class="p-3 text-right">
+                                <div class="flex justify-end space-x-1">
+                                    <button onclick="resumeAdminRoom('${sala.id}')" class="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition" title="Ingresar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                    </button>
+                                    <button onclick="deleteAdminRoom('${sala.id}')" class="p-1.5 bg-red-50 text-red-500 rounded hover:bg-red-100 transition" title="Eliminar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>`;
+                        tableBody.appendChild(tr);
                     });
                 }
 
@@ -686,10 +872,8 @@
                 }
                 gameState.allElements = basePool;
 
-                saveAdminSessionToLocalStorage();
-
                 if (juego.estado === 'esperando') {
-                    document.getElementById('lobby-code-display').textContent = gameState.gameCode;
+                    setupLobbyInviteUI(gameState.gameCode);
                     switchView('view-admin-lobby');
                     listenToPlayers();
                 } else if (juego.estado === 'jugando') {
@@ -742,6 +926,11 @@
                 console.error(err);
                 showToast("Error al eliminar la sala.");
             }
+        }
+
+        function returnToDashboardFromPlay() {
+            stopAutoDraw();
+            loadAdminDashboard();
         }
 
         // ==========================================
@@ -816,9 +1005,7 @@
                 gameState.role = 'admin';
                 gameState.adminWantsToPlay = adminPlays;
 
-                saveAdminSessionToLocalStorage();
-
-                document.getElementById('lobby-code-display').textContent = roomCode;
+                setupLobbyInviteUI(roomCode);
                 switchView('view-admin-lobby');
                 
                 listenToPlayers();
@@ -829,19 +1016,31 @@
             }
         }
 
-        function saveAdminSessionToLocalStorage() {
-            const sessionData = {
-                gameId: gameState.gameId,
-                gameCode: gameState.gameCode,
-                allElements: gameState.allElements,
-                rows: gameState.rows,
-                cols: gameState.cols,
-                role: 'admin',
-                adminCardMatrix: gameState.adminCardMatrix,
-                adminMarkedIndices: gameState.adminMarkedIndices,
-                adminWantsToPlay: gameState.adminWantsToPlay
-            };
-            localStorage.setItem('bingo_admin_session', JSON.stringify(sessionData));
+        // AUTOGENERACIÓN DE QR E INVITACIÓN AL LOBBY
+        function setupLobbyInviteUI(roomCode) {
+            document.getElementById('lobby-code-display').textContent = roomCode;
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${roomCode}`;
+            const qrImg = document.getElementById('lobby-qr-code');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inviteUrl)}`;
+        }
+
+        // COPIAR LINK DIRECTO AL PORTAPAPELES
+        function copyInviteLink() {
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
+            const message = `¡Únete a mi partida de Bingo Realtime! Código de sala: ${gameState.gameCode}. Ingresa aquí de forma directa: ${inviteUrl}`;
+            
+            navigator.clipboard.writeText(message)
+                .then(() => showToast("Invitación copiada al portapapeles."))
+                .catch(() => showToast("Error al copiar invitación."));
+        }
+
+        // COMPARTIR POR WHATSAPP
+        function shareOnWhatsApp() {
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${gameState.gameCode}`;
+            const message = `¡Únete a mi partida de Bingo Realtime! Código de sala: ${gameState.gameCode}. Ingresa aquí: ${inviteUrl}`;
+            
+            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank');
         }
 
         // CONTROL DE PESTAÑAS DEL ADMINISTRADOR (PANEL DE JUEGO)
@@ -901,7 +1100,6 @@
 
             gameState.adminCardMatrix = cardSelection;
             gameState.adminMarkedIndices = isOddDimension ? [centerIndex] : [];
-            saveAdminSessionToLocalStorage();
             
             buildAdminPlayerCardUI();
         }
@@ -919,9 +1117,9 @@
                 btn.className = 'aspect-square flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
                 
                 if (gameState.cols > 4) {
-                    btn.classList.add('text-xs');
+                    btn.className += ' text-xs';
                 } else {
-                    btn.classList.add('text-lg');
+                    btn.className += ' text-lg';
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -940,11 +1138,10 @@
                         const cellIndex = index;
                         const cellValue = val;
                         
-                        // SEGURIDAD: Validar que el elemento fue cantado previamente
                         const isCalled = gameState.calledElements.includes(cellValue);
                         if (!isCalled) {
                             showToast(`"${cellValue}" aún no ha sido extraído.`);
-                            return; // Ignorar acción de marcado trampa
+                            return; 
                         }
 
                         if (gameState.adminMarkedIndices.includes(cellIndex)) {
@@ -956,11 +1153,26 @@
                             btn.className = btn.className.replace(/bg-white|hover:bg-gray-50|text-gray-700|border-gray-300/g, '').trim();
                             btn.className += ' bg-emerald-600 text-white border-emerald-700 shadow-inner';
                         }
-                        saveAdminSessionToLocalStorage();
+                        
+                        checkAdminBingoCondition();
                     };
                 }
                 grid.appendChild(btn);
             });
+        }
+
+        // COMPROBACIÓN AUTOMÁTICA DE VICTORIA PARA ADMINISTRADOR
+        function checkAdminBingoCondition() {
+            const totalCells = gameState.rows * gameState.cols;
+            const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+
+            const targetCount = isOddDimension ? totalCells - 1 : totalCells;
+            const validMarksCount = gameState.adminMarkedIndices.filter(i => i !== centerIndex).length;
+
+            if (validMarksCount >= targetCount) {
+                showToast("¡Felicidades! Has completado tu cartón de Administrador.");
+            }
         }
 
         function listenToPlayers() {
@@ -1129,12 +1341,18 @@
 
             if (error) {
                 showToast('Error al enviar actualización');
+            } else {
+                // RECALCULO DE ACIERTOS REALES AL SEGUNDO CUANDO EL ADMIN SACA UN NÚMERO
+                updatePlayersProgressList();
             }
         }
 
+        // Monitoreo en tiempo real de progresos y de ganadores unificado en un solo canal
+        let playersCardsCache = {}; // Almacena temporalmente los cartones de los jugadores para evitar lecturas repetidas
+
         function listenToWinners() {
-            supabaseClient
-                .channel('room-winners')
+            gameState.realtimeSubscription = supabaseClient
+                .channel('admin-room-updates')
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
                     schema: 'public', 
@@ -1148,6 +1366,11 @@
                             document.getElementById('btn-verify-winner').classList.remove('hidden');
                             document.getElementById('btn-draw').classList.add('w-2/3');
                             
+                            // REGISTRAR ORDEN DE LLEGADA DE GANADORES PARA MEDALLERO
+                            if (!gameState.winnerRegistry.includes(payload.new.id)) {
+                                gameState.winnerRegistry.push(payload.new.id);
+                            }
+
                             startCelebration(); 
                             showToast(`¡BINGO! Reclamo de ${payload.new.nombre}`);
                         }
@@ -1160,19 +1383,30 @@
                 }, () => {
                     updatePlayersProgressList();
                 })
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'bingo_cartones'
+                }, payload => {
+                    // Almacenar el cartón en caché para realizar la verificación cruzada de aciertos
+                    playersCardsCache[payload.new.jugador_id] = payload.new.matriz;
+                    updatePlayersProgressList();
+                })
                 .subscribe();
 
             updatePlayersProgressList();
         }
 
+        // MONITOREO CRUZADO EN TIEMPO REAL CON MEDALLERO DE GANADORES EN ORDEN DE LLEGADA
         async function updatePlayersProgressList() {
             try {
-                const { data: jugadores, error } = await supabaseClient
+                // 1. Obtener jugadores de la sala
+                const { data: jugadores, error: errJ } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('*')
                     .eq('juego_id', gameState.gameId);
 
-                if (error || !jugadores) return;
+                if (errJ || !jugadores) return;
 
                 const progressContainer = document.getElementById('admin-progress-list');
                 progressContainer.innerHTML = '';
@@ -1182,32 +1416,64 @@
                     return;
                 }
 
-                // Generar reporte de aciertos reales (contrastando marcadas contra llamado en db)
+                // 2. Obtener matrices de cartones para cruce matemático si no están en caché
+                const missingCardPlayerIds = jugadores
+                    .filter(j => !playersCardsCache[j.id])
+                    .map(j => j.id);
+
+                if (missingCardPlayerIds.length > 0) {
+                    const { data: cartones } = await supabaseClient
+                        .from('bingo_cartones')
+                        .select('jugador_id, matriz')
+                        .in('jugador_id', missingCardPlayerIds);
+
+                    if (cartones) {
+                        cartones.forEach(c => {
+                            playersCardsCache[c.jugador_id] = c.matriz;
+                        });
+                    }
+                }
+
+                // 3. Cruzar los datos para el reporte de aciertos reales (sin trampas)
                 const progressData = jugadores.map(jugador => {
                     const marcadas = jugador.casillas_marcadas || [];
+                    const matriz = playersCardsCache[jugador.id] || [];
                     
                     const totalCells = gameState.rows * gameState.cols;
                     const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
                     const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
                     
-                    // Cálculo de celdas restantes para ganar (Bingo Completo)
+                    // Contar aciertos reales (cuántos elementos de su matriz YA salieron de la tómbola)
+                    const aciertosReales = matriz.filter((val, index) => {
+                        if (index === centerIndex && hasOddDimension) return false; // Excluir espacio libre
+                        return gameState.calledElements.includes(val);
+                    }).length;
+
                     const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
                     const marcadasValidasCount = marcadas.filter(i => i !== centerIndex).length;
                     
-                    const isMissingOnlyOne = (targetCellsCount - marcadasValidasCount === 1);
-                    const mathematicallyHasBingo = (marcadasValidasCount >= targetCellsCount);
+                    const mathematicallyHasBingo = (aciertosReales >= targetCellsCount);
+                    const isMissingOnlyOne = (targetCellsCount - aciertosReales === 1);
 
-                    let statusText = `${marcadas.length} marcadas`;
+                    let statusText = `${aciertosReales} aciertos (${marcadasValidasCount} marcados)`;
                     let statusClass = 'bg-blue-100 text-blue-800';
 
                     if (jugador.es_ganador) {
-                        statusText = '🏆 BINGO RECLAMADO';
+                        // Conseguir posición en medallas según orden de llegada
+                        let positionIndex = gameState.winnerRegistry.indexOf(jugador.id);
+                        if (positionIndex === -1) {
+                            gameState.winnerRegistry.push(jugador.id);
+                            positionIndex = gameState.winnerRegistry.indexOf(jugador.id);
+                        }
+
+                        const medals = ["🥇 1er Ganador", "🥈 2do Ganador", "🥉 3er Ganador"];
+                        statusText = medals[positionIndex] || `🏅 Ganador #${positionIndex + 1}`;
                         statusClass = 'bg-green-100 text-green-800 animate-pulse';
                     } else if (mathematicallyHasBingo) {
                         statusText = '⚠️ ¡TIENE BINGO! (Sin cantar)';
                         statusClass = 'bg-red-100 text-red-800 font-black animate-pulse';
                     } else if (isMissingOnlyOne) {
-                        statusText = '⚡ ¡Falta 1 casilla!';
+                        statusText = `⚡ ¡Falta 1! (${aciertosReales} aciertos)`;
                         statusClass = 'bg-yellow-100 text-yellow-800';
                     }
 
@@ -1215,7 +1481,7 @@
                         nombre: jugador.nombre,
                         statusText,
                         statusClass,
-                        score: marcadas.length
+                        score: aciertosReales
                     };
                 });
 
@@ -1283,6 +1549,7 @@
             }
 
             try {
+                // 1. Validar la existencia de la sala y si ya existe el jugador registrado anteriormente (Reconexión)
                 const { data: juego, error: errJuego } = await supabaseClient
                     .from('bingo_juegos')
                     .select('*')
@@ -1305,7 +1572,45 @@
                 gameState.rows = juego.filas;
                 gameState.cols = juego.columnas;
                 gameState.role = 'player';
-                
+
+                // VERIFICACIÓN DE RECONEXIÓN: ¿El jugador ya estaba registrado en esta sala?
+                const { data: jugadorExistente } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .select('*')
+                    .eq('juego_id', juego.id)
+                    .eq('nombre', playerName)
+                    .maybeSingle();
+
+                if (jugadorExistente) {
+                    // El jugador ya existía en la base de datos (se cayó la pestaña y volvió a ingresar)
+                    gameState.playerId = jugadorExistente.id;
+                    gameState.markedIndices = jugadorExistente.casillas_marcadas || [];
+
+                    // Recuperar el cartón físico que ya tenía guardado en Supabase
+                    const { data: cartonExistente } = await supabaseClient
+                        .from('bingo_cartones')
+                        .select('matriz')
+                        .eq('jugador_id', jugadorExistente.id)
+                        .single();
+
+                    gameState.cardMatrix = cartonExistente.matriz;
+                    savePlayerSessionToLocalStorage();
+
+                    if (juego.estado === 'esperando') {
+                        document.getElementById('player-lobby-room').textContent = roomCode;
+                        document.getElementById('player-lobby-name').textContent = playerName;
+                        switchView('view-player-lobby');
+                    } else if (juego.estado === 'jugando') {
+                        startGameForPlayer();
+                    }
+
+                    listenToGameStart();
+                    updatePlayerCalledElements(juego.elementos_llamados);
+                    showToast("Sesión y cartón recuperados de la sala.");
+                    return; // Detener flujo para no crear duplicados
+                }
+
+                // Si no existía, crear el registro de jugador como habitualmente
                 const totalCells = juego.filas * juego.columnas;
                 const isOddDimension = (juego.filas % 2 !== 0) && (juego.columnas % 2 !== 0);
                 const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
@@ -1337,6 +1642,7 @@
                     basePool = [...juego.configuracion.palabras];
                 }
 
+                // ALGORITMO FISHER-YATES: Mezcla aleatoria única
                 const shuffled = [...basePool];
                 for (let i = shuffled.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -1390,67 +1696,7 @@
         }
 
         async function checkRestoreSessions() {
-            const rawAdminSession = localStorage.getItem('bingo_admin_session');
             const rawPlayerSession = localStorage.getItem('bingo_player_session');
-
-            if (rawAdminSession) {
-                try {
-                    const session = JSON.parse(rawAdminSession);
-                    
-                    const { data: juego, error } = await supabaseClient
-                        .from('bingo_juegos')
-                        .select('*')
-                        .eq('id', session.gameId)
-                        .single();
-
-                    if (!error && juego && juego.estado !== 'finalizado') {
-                        gameState.gameId = session.gameId;
-                        gameState.gameCode = session.gameCode;
-                        gameState.allElements = session.allElements;
-                        gameState.rows = session.rows;
-                        gameState.cols = session.cols;
-                        gameState.role = 'admin';
-                        gameState.adminCardMatrix = session.adminCardMatrix || [];
-                        gameState.adminMarkedIndices = session.adminMarkedIndices || [];
-                        gameState.adminWantsToPlay = (juego.configuracion?.admin_juega !== false);
-
-                        if (juego.estado === 'esperando') {
-                            document.getElementById('lobby-code-display').textContent = gameState.gameCode;
-                            switchView('view-admin-lobby');
-                            listenToPlayers();
-                        } else if (juego.estado === 'jugando') {
-                            setupAdminGameBoard();
-                            switchView('view-admin-play');
-                            listenToWinners();
-                            
-                            toggleAdminTabsVisibility();
-
-                            if (gameState.adminWantsToPlay && gameState.adminCardMatrix.length > 0) {
-                                buildAdminPlayerCardUI();
-                            }
-
-                            gameState.calledElements = juego.elementos_llamados || [];
-                            document.getElementById('current-called-display').textContent = gameState.calledElements[gameState.calledElements.length - 1] || '--';
-                            
-                            gameState.calledElements.forEach(item => {
-                                setTimeout(() => {
-                                    const cell = document.getElementById(`admin-cell-${item}`);
-                                    if (cell) {
-                                        cell.classList.remove('bg-gray-50');
-                                        cell.classList.add('bg-blue-600', 'text-white');
-                                    }
-                                }, 100);
-                            });
-                        }
-                        return; 
-                    } else {
-                        localStorage.removeItem('bingo_admin_session');
-                    }
-                } catch (e) {
-                    console.error("Error al restaurar sesión de administrador:", e);
-                    localStorage.removeItem('bingo_admin_session');
-                }
-            }
 
             if (rawPlayerSession) {
                 try {
@@ -1509,7 +1755,6 @@
                             startGameForPlayer();
                         }
                         if (juego.estado === 'finalizado') {
-                            // Sincronizar el nombre del ganador para el telón final
                             displayGameWinnerOverlay();
                         }
                         updatePlayerCalledElements(juego.elementos_llamados);
@@ -1521,24 +1766,27 @@
         // Consultar el ganador legítimo de la sesión y desplegar el telón final apoteósico
         async function displayGameWinnerOverlay() {
             try {
-                const { data: ganador } = await supabaseClient
+                // Obtener todos los ganadores reales de Supabase
+                const { data: ganadores, error } = await supabaseClient
                     .from('bingo_jugadores')
                     .select('nombre')
                     .eq('juego_id', gameState.gameId)
-                    .eq('es_ganador', true)
-                    .maybeSingle();
+                    .eq('es_ganador', true);
 
-                const winnerName = ganador ? ganador.nombre : 'Partida Finalizada';
-                document.getElementById('winner-announcement').textContent = `🏆 ${winnerName} 🏆`;
+                let winnerText = 'Finalizado';
+                if (!error && ganadores && ganadores.length > 0) {
+                    winnerText = ganadores.map(g => g.nombre).join(' & ');
+                }
+
+                document.getElementById('winner-announcement').textContent = `🏆 ${winnerText} 🏆`;
                 
-                // Mostrar telón de celebración a pantalla completa
+                // Mostrar telón de celebración a pantalla completa para todos
                 document.getElementById('celebration-overlay').classList.remove('hidden');
                 startCelebration();
 
                 localStorage.removeItem('bingo_player_session');
-                localStorage.removeItem('bingo_admin_session');
 
-                // Terminar de forma elegante tras 8 segundos de luces y confeti
+                // Terminar tras 8 segundos de luces y confeti
                 setTimeout(() => {
                     location.reload();
                 }, 8000);
@@ -1569,12 +1817,15 @@
             gameState.cardMatrix.forEach((val, index) => {
                 const btn = document.createElement('button');
                 btn.id = `player-cell-${index}`;
-                btn.className = 'aspect-square flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
+                btn.className = 'flex items-center justify-center border text-center p-1 font-bold rounded-lg shadow-sm overflow-hidden select-none transition-all duration-200 transform active:scale-95';
+                
+                // Ajustar relaciones responsivas de tamaño según palabras o números
+                btn.className += ` ${getWordFontSizeClass(val)}`;
                 
                 if (gameState.cols > 4) {
-                    btn.classList.add('text-xs');
+                    btn.classList.add('aspect-square');
                 } else {
-                    btn.classList.add('text-lg');
+                    btn.classList.add('py-3.5'); // Hacer casillas rectangulares si hay pocas columnas para dar aire a las palabras
                 }
 
                 if (index === centerIndex && isOddDimension) {
@@ -1593,7 +1844,7 @@
                         const cellIndex = index;
                         const cellValue = val;
 
-                        // SEGURIDAD: Evitar que el jugador marque casillas no extraídas
+                        // SEGURIDAD ANTI-TRAMPAS: Evitar que el jugador marque casillas no extraídas
                         const isCalled = gameState.calledElements.includes(cellValue);
                         if (!isCalled) {
                             showToast(`"${cellValue}" aún no ha sido extraído por el Administrador.`);
@@ -1614,10 +1865,42 @@
                         
                         // Sincronizar marcas a Supabase al instante para monitoreo del Administrador
                         await syncPlayerMarksToDatabase();
+
+                        // AUTOMATIZACIÓN DE VICTORIA DEL JUGADOR
+                        checkPlayerBingoCondition();
                     };
                 }
                 grid.appendChild(btn);
             });
+        }
+
+        // REDIMENSIONADOR DINÁMICO DE FUENTES PARA PALABRAS LARGAS
+        function getWordFontSizeClass(val) {
+            const len = val.length;
+            if (gameState.cols > 4) {
+                if (len > 10) return 'text-[8px] tracking-tighter leading-none';
+                if (len > 7) return 'text-[9px] leading-tight';
+                return 'text-xs';
+            } else {
+                if (len > 10) return 'text-xs tracking-tight';
+                if (len > 7) return 'text-sm';
+                return 'text-lg';
+            }
+        }
+
+        // COMPROBACIÓN AUTOMÁTICA DE VICTORIA PARA JUGADORES (Cantar Bingo automático)
+        function checkPlayerBingoCondition() {
+            const totalCells = gameState.rows * gameState.cols;
+            const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+            const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+
+            const targetCount = isOddDimension ? totalCells - 1 : totalCells;
+            const validMarksCount = gameState.markedIndices.filter(i => i !== centerIndex).length;
+
+            if (validMarksCount >= targetCount) {
+                // Reclamar victoria de forma automática al completar el cartón
+                claimBingo();
+            }
         }
 
         // Sincronizar las casillas marcadas a Supabase en tiempo real
@@ -1634,13 +1917,14 @@
 
         function updatePlayerCalledElements(calledArray) {
             const historyList = document.getElementById('player-history-list');
+            const allCalledContainer = document.getElementById('player-all-called-list');
 
-            // Mantener al jugador con el historial de llamados sincronizados por si volvió a ingresar
             gameState.calledElements = calledArray || [];
 
             if (!calledArray || calledArray.length === 0) {
                 document.getElementById('player-called-display').textContent = 'Esperando...';
                 historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Ninguno aún</span>';
+                allCalledContainer.innerHTML = '<span class="text-gray-400 text-[9px] italic">Esperando que inicie el juego...</span>';
                 return;
             }
 
@@ -1657,6 +1941,7 @@
 
             document.getElementById('player-called-display').textContent = last;
             
+            // 1. Mostrar historial deslizable (elementos recientes descartando el actual)
             historyList.innerHTML = '';
             const history = [...calledArray].reverse().slice(1);
 
@@ -1671,6 +1956,16 @@
                 });
             }
 
+            // 2. TABLERO DE CONTROL COMPLETO: Mostrar TODOS los llamados sin exclusiones
+            allCalledContainer.innerHTML = '';
+            [...calledArray].forEach(item => {
+                const badge = document.createElement('span');
+                badge.className = 'bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded border border-gray-300';
+                badge.textContent = item;
+                allCalledContainer.appendChild(badge);
+            });
+
+            // 3. Notificación de presencia en cartón
             const matchedIndex = gameState.cardMatrix.indexOf(last);
             if (matchedIndex !== -1) {
                 const totalCells = gameState.rows * gameState.cols;
@@ -1695,6 +1990,154 @@
                 startCelebration(); 
                 showToast('¡Has reclamado Bingo! Esperando confirmación del Administrador.');
             }
+        }
+
+        // ==========================================
+        // SECCIÓN: MOTOR DE MINIJUEGO "BINGO BIRD" (Para Lobby de Espera del Jugador)
+        // ==========================================
+
+        function startLobbyGame() {
+            // Reiniciar variables del juego
+            bird = { x: 45, y: 50, radius: 7, velocity: 0, gravity: 0.22, jumpForce: -4 };
+            pipes = [];
+            gameScore = 0;
+            isLobbyGameOver = false;
+            document.getElementById('game-score-display').textContent = '0';
+            
+            // Forzar resize de canvas
+            lobbyGameCanvas.width = lobbyGameCanvas.offsetWidth;
+            lobbyGameCanvas.height = lobbyGameCanvas.offsetHeight;
+
+            // Limpiar hilos previos por seguridad
+            if (lobbyGameIntervalId) clearInterval(lobbyGameIntervalId);
+            
+            // Iniciar bucle principal a 60FPS
+            lobbyGameIntervalId = setInterval(updateLobbyGame, 1000 / 60);
+        }
+
+        function stopLobbyGame() {
+            if (lobbyGameIntervalId) {
+                clearInterval(lobbyGameIntervalId);
+                lobbyGameIntervalId = null;
+            }
+        }
+
+        function resetLobbyGame() {
+            stopLobbyGame();
+            startLobbyGame();
+        }
+
+        function handleLobbyGameClick() {
+            if (isLobbyGameOver) {
+                resetLobbyGame();
+            } else {
+                bird.velocity = bird.jumpForce;
+            }
+        }
+
+        function updateLobbyGame() {
+            // 1. Aplicar física a la bola de bingo
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Limitar bordes
+            if (bird.y + bird.radius > lobbyGameCanvas.height) {
+                bird.y = lobbyGameCanvas.height - bird.radius;
+                endLobbyGame();
+            }
+            if (bird.y - bird.radius < 0) {
+                bird.y = bird.radius;
+                bird.velocity = 0;
+            }
+
+            // 2. Generación y movimiento de tuberías (obstáculos)
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < lobbyGameCanvas.width - 95) {
+                const gap = 38; // Tamaño de la brecha para pasar
+                const minHeight = 15;
+                const maxHeight = lobbyGameCanvas.height - gap - minHeight;
+                const topHeight = Math.floor(Math.random() * (maxHeight - minHeight)) + minHeight;
+
+                pipes.push({
+                    x: lobbyGameCanvas.width,
+                    top: topHeight,
+                    bottom: topHeight + gap,
+                    width: 14,
+                    passed: false
+                });
+            }
+
+            // Actualizar tuberías
+            pipes.forEach(pipe => {
+                pipe.x -= 1.4; // Velocidad de avance de obstáculos
+
+                // Sumar puntos al pasar obstáculos
+                if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+                    pipe.passed = true;
+                    gameScore++;
+                    document.getElementById('game-score-display').textContent = gameScore;
+                }
+
+                // Detector de Colisiones
+                if (
+                    bird.x + bird.radius > pipe.x &&
+                    bird.x - bird.radius < pipe.x + pipe.width &&
+                    (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
+                ) {
+                    endLobbyGame();
+                }
+            });
+
+            // Limpiar tuberías fuera de pantalla
+            pipes = pipes.filter(p => p.x + p.width > 0);
+
+            // 3. Renderizar cuadro a cuadro
+            renderLobbyGame();
+        }
+
+        function renderLobbyGame() {
+            lobbyGameCtx.clearRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
+
+            // Dibujar Tuberías
+            pipes.forEach(pipe => {
+                lobbyGameCtx.fillStyle = '#10B981'; // Verde esmeralda
+                // Tubería superior
+                lobbyGameCtx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+                // Tubería inferior
+                lobbyGameCtx.fillRect(pipe.x, pipe.bottom, pipe.width, lobbyGameCanvas.height - pipe.bottom);
+            });
+
+            // Dibujar Bola de Bingo (Jugador)
+            lobbyGameCtx.beginPath();
+            lobbyGameCtx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            lobbyGameCtx.fillStyle = '#3B82F6'; // Azul
+            lobbyGameCtx.fill();
+            lobbyGameCtx.closePath();
+
+            // Dibujar número estético de bola de bingo en el centro del ave
+            lobbyGameCtx.fillStyle = '#FFFFFF';
+            lobbyGameCtx.font = 'bold 5px Arial';
+            lobbyGameCtx.textAlign = 'center';
+            lobbyGameCtx.fillText('75', bird.x, bird.y + 2);
+
+            // Renderizar fin de juego
+            if (isLobbyGameOver) {
+                lobbyGameCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                lobbyGameCtx.fillRect(0, 0, lobbyGameCanvas.width, lobbyGameCanvas.height);
+
+                lobbyGameCtx.fillStyle = '#FFFFFF';
+                lobbyGameCtx.font = 'bold 12px sans-serif';
+                lobbyGameCtx.textAlign = 'center';
+                lobbyGameCtx.fillText('FIN DEL JUEGO', lobbyGameCanvas.width / 2, lobbyGameCanvas.height / 2 - 5);
+                
+                lobbyGameCtx.font = '8px sans-serif';
+                lobbyGameCtx.fillText('Toca aquí para reiniciar', lobbyGameCanvas.width / 2, lobbyGameCanvas.height / 2 + 10);
+            }
+        }
+
+        function endLobbyGame() {
+            isLobbyGameOver = true;
+            stopLobbyGame();
+            renderLobbyGame();
         }
 
         // ==========================================
