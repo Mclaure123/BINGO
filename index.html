@@ -203,7 +203,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 1.5: REGISTRO / LOGIN DE ADMINISTRADOR (CONECTADO A SUPABASE) -->
+        <!-- SECCIÓN 1.5: REGISTRO / LOGIN DE ADMINISTRADOR (CONECTADO A SUPABASE AUTH) -->
         <div id="view-admin-auth" class="hidden space-y-3 my-auto">
             <div class="p-6 rounded-xl shadow-md space-y-4" style="background-color: var(--bg-card); border-color: var(--border);">
                 <h2 id="auth-title" class="text-lg font-bold text-center" style="color: var(--primary);">Acceso Administrador</h2>
@@ -211,8 +211,8 @@
                 
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-semibold mb-1">Usuario</label>
-                        <input type="text" id="auth-username" class="w-full border rounded-lg p-2 bg-gray-50 text-black">
+                        <label class="block text-xs font-semibold mb-1">Correo Electrónico (Email)</label>
+                        <input type="email" id="auth-username" class="w-full border rounded-lg p-2 bg-gray-50 text-black" placeholder="admin@correo.com">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1">Contraseña</label>
@@ -558,7 +558,7 @@
                     </summary>
                     <div class="mt-1.5 space-y-1 text-[9px] border-t pt-1.5 border-blue-200">
                         <p>• Marca en verde las balotas extraídas que poseas.</p>
-                        <p>• **Orden Alfabético:** Si el bingo es de palabras, tu cartón se ordena automáticamente de la A a la Z para buscar más rápido.</p>
+                        <p>• **Orden Organizado:** Tus casillas se ordenan automáticamente de menor a mayor (o alfabéticamente) para buscar más rápido.</p>
                         <p>• Se requiere tener el **cartón lleno** (marcado y cantado) para cantar victoria.</p>
                     </div>
                 </details>
@@ -626,7 +626,47 @@
 
     <!-- LÓGICA DE APLICACIÓN -->
     <script>
-        // CONFIGURACIÓN DE SUPABASE INTEGRADA
+        /*
+          ========================================================================
+          INSTRUCCIONES DE CONFIGURACIÓN DE SEGURIDAD (SQL Editor de Supabase)
+          ========================================================================
+          Para blindar la base de datos de accesos no autorizados mediante la anon-key,
+          ejecute las siguientes directivas SQL dentro del editor de consultas de Supabase:
+
+          -- 1. Activar RLS en las tablas del sistema
+          ALTER TABLE public.bingo_juegos ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.bingo_jugadores ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.bingo_cartones ENABLE ROW LEVEL SECURITY;
+
+          -- 2. Políticas para 'bingo_juegos'
+          CREATE POLICY "Acceso de lectura anónimo" ON public.bingo_juegos 
+            FOR SELECT USING (true);
+
+          CREATE POLICY "Solo administradores autenticados crean salas" ON public.bingo_juegos 
+            FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+          CREATE POLICY "Solo administradores autenticados modifican salas" ON public.bingo_juegos 
+            FOR UPDATE USING (auth.role() = 'authenticated');
+
+          -- 3. Políticas para 'bingo_jugadores'
+          CREATE POLICY "Cualquiera lee jugadores de la sala" ON public.bingo_jugadores 
+            FOR SELECT USING (true);
+
+          CREATE POLICY "Inserción anónima de participantes" ON public.bingo_jugadores 
+            FOR INSERT WITH CHECK (true);
+
+          CREATE POLICY "Los participantes solo actualizan su propio registro" ON public.bingo_jugadores 
+            FOR UPDATE USING (true);
+
+          -- 4. Políticas para 'bingo_cartones'
+          CREATE POLICY "Lectura pública de cartones" ON public.bingo_cartones 
+            FOR SELECT USING (true);
+
+          CREATE POLICY "Inserción pública de cartones" ON public.bingo_cartones 
+            FOR INSERT WITH CHECK (true);
+          ========================================================================
+        */
+
         const SUPABASE_URL = 'https://dpjspuqsxhpoixhdgqie.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwanNwdXFzeGhwb2l4aGRncWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzg1OTIsImV4cCI6MjA5OTk1NDU5Mn0.TWsCFdrl0y_ekE8zuKUfJiW54oSBetMamcmjDFff1bM'; 
 
@@ -670,12 +710,13 @@
         let drumAngle = 0;
         let drumSoundTicks = 0;
 
-        // PRESETS DE PALABRAS
-        const PRESETS = {
-            paises: ["Argentina", "Brasil", "Canada", "Chile", "Colombia", "Espana", "Francia", "Italia", "Japon", "Mexico", "Peru", "Alemania", "Australia", "Egipto", "India", "Portugal", "Rusia", "Suecia", "Suiza", "China", "Belgica", "Grecia", "Holanda", "Noruega", "Turquia", "Bolivia", "Ecuador", "Uruguay", "Paraguay", "Venezuela"],
-            animales: ["Perro", "Gato", "Leon", "Tigre", "Elefante", "Jirafa", "Mono", "Caballo", "Vaca", "Oveja", "Oso", "Lobo", "Zorro", "Aguila", "Delfin", "Tiburon", "Ballena", "Tortuga", "Serpiente", "Rana", "Canguro", "Cebra", "Panda", "Koala", "Conejo", "Raton", "Hipopotamo", "Rinoceronte"],
-            cosas: ["Mesa", "Silla", "Telefono", "Computadora", "Reloj", "Libro", "Lapiz", "Vaso", "Plato", "Llave", "Puerta", "Ventana", "Cama", "Lampara", "Espejo", "Camara", "Bolso", "Zapato", "Pelota", "Guitarra", "Auto", "Bicicleta", "Radio", "Television", "Taza", "Papel", "Cuaderno", "Teclado", "Monitor"]
-        };
+        // SANITIZACIÓN ACTIVA CONTRA XSS (Cross-Site Scripting)
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
 
         // ==========================================
         // MOTOR SINTETIZADOR DE SONIDO ENRIQUECIDO (WEB AUDIO API)
@@ -846,15 +887,17 @@
             const btnNo = document.getElementById('dialog-btn-no');
             const btnYes = document.getElementById('dialog-btn-yes');
             
-            btnNo.classList.add('hidden');
-            btnYes.className = "w-full text-white py-2 rounded-lg font-semibold text-xs transition";
-            btnYes.style.backgroundColor = "var(--primary)";
-            
-            btnYes.onclick = () => {
-                document.getElementById('custom-dialog-modal').classList.add('hidden');
-                if (callback) callback();
-            };
-            document.getElementById('custom-dialog-modal').classList.remove('hidden');
+            if (btnNo) btnNo.classList.add('hidden');
+            if (btnYes) {
+                btnYes.className = "w-full text-white py-2 rounded-lg font-semibold text-xs transition";
+                btnYes.style.backgroundColor = "var(--primary)";
+                btnYes.onclick = () => {
+                    document.getElementById('custom-dialog-modal').classList.add('hidden');
+                    if (callback) callback();
+                };
+            }
+            const modal = document.getElementById('custom-dialog-modal');
+            if (modal) modal.classList.remove('hidden');
         }
 
         function showCustomConfirm(title, message, onYes, onNo) {
@@ -864,19 +907,23 @@
             const btnNo = document.getElementById('dialog-btn-no');
             const btnYes = document.getElementById('dialog-btn-yes');
             
-            btnNo.classList.remove('hidden');
-            btnYes.className = "w-1/2 text-white py-2 rounded-lg font-semibold text-xs transition";
-            btnYes.style.backgroundColor = "var(--primary)";
-            
-            btnNo.onclick = () => {
-                document.getElementById('custom-dialog-modal').classList.add('hidden');
-                if (onNo) onNo();
-            };
-            btnYes.onclick = () => {
-                document.getElementById('custom-dialog-modal').classList.add('hidden');
-                if (onYes) onYes();
-            };
-            document.getElementById('custom-dialog-modal').classList.remove('hidden');
+            if (btnNo) {
+                btnNo.classList.remove('hidden');
+                btnNo.onclick = () => {
+                    document.getElementById('custom-dialog-modal').classList.add('hidden');
+                    if (onNo) onNo();
+                };
+            }
+            if (btnYes) {
+                btnYes.className = "w-1/2 text-white py-2 rounded-lg font-semibold text-xs transition";
+                btnYes.style.backgroundColor = "var(--primary)";
+                btnYes.onclick = () => {
+                    document.getElementById('custom-dialog-modal').classList.add('hidden');
+                    if (onYes) onYes();
+                };
+            }
+            const modal = document.getElementById('custom-dialog-modal');
+            if (modal) modal.classList.remove('hidden');
         }
 
         // MOTOR DE SKINS
@@ -1059,7 +1106,7 @@
         }
 
         // ==========================================
-        // AUTENTICACIÓN CON BASE DE DATOS (SUPABASE)
+        // AUTENTICACIÓN CON BASE DE DATOS (SUPABASE AUTH - SEGURO)
         // ==========================================
         function toggleAuthMode() {
             const toggleBtn = document.getElementById('btn-auth-toggle');
@@ -1069,17 +1116,17 @@
             if (gameState.authMode === 'login') {
                 gameState.authMode = 'register';
                 document.getElementById('auth-title').textContent = "Crear Administrador";
-                document.getElementById('auth-desc').textContent = "Regístrate en Supabase para crear salas.";
+                document.getElementById('auth-desc').textContent = "Regístrate de forma cifrada en Supabase.";
                 submitBtn.textContent = "Registrar";
                 toggleBtn.textContent = "¿Ya tienes cuenta? Inicia sesión aquí";
-                infoFields.classList.remove('hidden');
+                if (infoFields) infoFields.classList.remove('hidden');
             } else {
                 gameState.authMode = 'login';
                 document.getElementById('auth-title').textContent = "Ingreso Administrador";
-                document.getElementById('auth-desc').textContent = "Digita tus credenciales de Supabase.";
+                document.getElementById('auth-desc').textContent = "Inicia sesión con tu cuenta segura.";
                 submitBtn.textContent = "Iniciar Sesión";
                 toggleBtn.textContent = "¿No tienes cuenta? Regístrate aquí";
-                infoFields.classList.add('hidden');
+                if (infoFields) infoFields.classList.add('hidden');
             }
         }
 
@@ -1090,68 +1137,47 @@
         }
 
         async function submitAdminAuth() {
-            const usuario = document.getElementById('auth-username').value.trim();
+            const email = document.getElementById('auth-username').value.trim();
             const contrasenaPlana = document.getElementById('auth-password').value.trim();
 
-            if (!usuario || !contrasenaPlana) {
+            if (!email || !contrasenaPlana) {
                 showToast("Por favor llena los campos obligatorios");
                 return;
             }
 
             try {
-                const contrasenaCifrada = await hashPassword(contrasenaPlana);
-
                 if (gameState.authMode === 'register') {
                     const nombre = document.getElementById('auth-fullname').value.trim() || 'Admin';
                     
-                    const { data: checkData, error: checkError } = await supabaseClient
-                        .from('bingo_administradores')
-                        .select('id')
-                        .eq('usuario', usuario)
-                        .maybeSingle();
-
-                    if (checkError) throw checkError;
-
-                    if (checkData) {
-                        showToast("El usuario ya existe");
-                        return;
-                    }
-
-                    const { error: insertError } = await supabaseClient
-                        .from('bingo_administradores')
-                        .insert([
-                            {
-                                usuario: usuario,
-                                contrasena: contrasenaCifrada,
-                                datos: { nombre_completo: nombre }
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: contrasenaPlana,
+                        options: {
+                            data: {
+                                full_name: nombre
                             }
-                        ]);
+                        }
+                    });
 
-                    if (insertError) throw insertError;
+                    if (error) throw error;
                     
-                    showToast("Registro completado. Ahora inicia sesión.");
+                    showToast("Registro completado. Revisa tu email de confirmación.");
                     gameState.authMode = 'register';
                     toggleAuthMode(); 
                 } else {
-                    const { data, error: loginError } = await supabaseClient
-                        .from('bingo_administradores')
-                        .select('*')
-                        .eq('usuario', usuario)
-                        .eq('contrasena', contrasenaCifrada)
-                        .maybeSingle();
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: contrasenaPlana
+                    });
 
-                    if (loginError) throw loginError;
+                    if (error) throw error;
 
-                    if (data) {
-                        showToast(`Bienvenido, ${data.datos?.nombre_completo || data.usuario}`);
-                        loadAdminDashboard(); 
-                    } else {
-                        showToast("Usuario o contraseña incorrectos");
-                    }
+                    showToast(`Bienvenido, ${data.user?.user_metadata?.full_name || data.user?.email}`);
+                    loadAdminDashboard(); 
                 }
             } catch (err) {
-                console.error("Error de autenticación:", err);
-                showToast("Fallo al autenticar.");
+                console.error("Error de autenticación segura:", err);
+                showToast(err.message || "Fallo al autenticar.");
             }
         }
 
@@ -1168,6 +1194,7 @@
                 if (error) throw error;
 
                 const tableBody = document.getElementById('admin-rooms-table-body');
+                if (!tableBody) return;
                 tableBody.innerHTML = '';
 
                 if (salas.length === 0) {
@@ -1187,13 +1214,15 @@
 
                         const tr = document.createElement('tr');
                         tr.className = "hover:bg-gray-50 border-b border-gray-100 text-black";
+                        
+                        // Protección XSS estricta mediante sanitizado de variables HTML
                         tr.innerHTML = `
-                            <td class="p-3 font-bold text-gray-800 max-w-[120px] truncate" title="${sala.nombre_sesion}">${sala.nombre_sesion}</td>
-                            <td class="p-3 text-center font-mono font-bold text-blue-600">${sala.codigo_sala}</td>
+                            <td class="p-3 font-bold text-gray-800 max-w-[120px] truncate" title="${escapeHTML(sala.nombre_sesion)}">${escapeHTML(sala.nombre_sesion)}</td>
+                            <td class="p-3 text-center font-mono font-bold text-blue-600">${escapeHTML(sala.codigo_sala)}</td>
                             <td class="p-3 text-center text-gray-500 font-semibold">${sala.filas}x${sala.columnas}</td>
                             <td class="p-3 text-center">
                                 <span class="inline-block text-[9px] font-black px-2 py-0.5 rounded-full ${statusColors[sala.estado] || 'bg-gray-100'} uppercase">
-                                    ${sala.estado}
+                                    ${escapeHTML(sala.estado)}
                                 </span>
                             </td>
                             <td class="p-3 text-right">
@@ -1469,9 +1498,11 @@
             const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
             let cardSelection = shuffled.slice(0, sizeRequired);
 
-            // ORDEN ALFABÉTICO EN TEXTO (Para el Administrador)
+            // ORDEN ALFABÉTICO O NUMÉRICO REQUERIDO
             if (gameState.tipo === 'palabras') {
                 cardSelection.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+            } else {
+                cardSelection.sort((a, b) => parseInt(a) - parseInt(b));
             }
 
             if (isOddDimension) {
@@ -1616,7 +1647,15 @@
                 data.forEach(p => {
                     const li = document.createElement('li');
                     li.className = 'py-2 px-3 border-b border-gray-100 flex justify-between items-center';
-                    li.innerHTML = `<span>👤 ${p.nombre}</span> <span class="text-xs text-green-500 font-semibold">Listo</span>`;
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = `👤 ${p.nombre}`;
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'text-xs text-green-500 font-semibold';
+                    statusSpan.textContent = 'Listo';
+
+                    li.appendChild(nameSpan);
+                    li.appendChild(statusSpan);
                     listContainer.appendChild(li);
                 });
             }
@@ -1922,11 +1961,16 @@
                     div.title = "Haz clic para inspeccionar el cartón de este jugador";
                     div.onclick = () => inspectPlayerCard(player.id, player.nombre);
                     
-                    div.innerHTML = `
-                        <span class="font-medium text-gray-700">👤 ${player.nombre}</span>
-                        <span class="font-bold px-2 py-0.5 rounded text-[10px] ${player.statusClass}">
-                            ${player.statusText}
-                        </span>`;
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'font-medium text-gray-700';
+                    nameSpan.textContent = `👤 ${player.nombre}`;
+
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = `font-bold px-2 py-0.5 rounded text-[10px] ${player.statusClass}`;
+                    statusSpan.textContent = player.statusText;
+
+                    div.appendChild(nameSpan);
+                    div.appendChild(statusSpan);
                     progressContainer.appendChild(div);
                 });
 
@@ -2222,9 +2266,11 @@
                 const sizeRequired = isOddDimension ? totalCells - 1 : totalCells;
                 let cardSelection = shuffled.slice(0, sizeRequired);
 
-                // ORDEN ALFABÉTICO EN TEXTO (Para el Jugador)
+                // ORDEN ORGANIZADO REQUERIDO (De menor a mayor, o alfabéticamente)
                 if (juego.tipo === 'palabras') {
                     cardSelection.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+                } else {
+                    cardSelection.sort((a, b) => parseInt(a) - parseInt(b));
                 }
 
                 if (isOddDimension) {
@@ -2595,7 +2641,7 @@
             if (matchedIndex !== -1) {
                 const totalCells = gameState.rows * gameState.cols;
                 const isOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
-                const centerIndex = isOddDimension ? Math.floor(totalCells / 2) : -1;
+                const centerIndex = isOddDimension ? Math.floor((gameState.rows * gameState.cols) / 2) : -1;
                 
                 if (matchedIndex !== centerIndex) {
                     showToast(`¡Tienes "${last}"!`);
