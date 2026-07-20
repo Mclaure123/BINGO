@@ -432,7 +432,7 @@
             
             <!-- TARJETA INFERIOR: Pestañas -->
             <div class="p-3 rounded-xl shadow border flex-grow overflow-hidden flex flex-col min-h-0" style="background-color: var(--bg-card); border-color: var(--border);">
-                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0" style="border-b-color: var(--border);">
+                <div id="admin-tabs-header" class="flex border-b mb-2 text-xs font-bold flex-shrink-0" style="border-bottom-color: var(--border);">
                     <button id="tab-admin-board" onclick="switchAdminTab('board')" class="w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600">TABLERO GENERAL</button>
                     <button id="tab-admin-card" onclick="switchAdminTab('card')" class="w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400">MI CARTÓN (JUGAR)</button>
                 </div>
@@ -670,6 +670,13 @@
         let drumAngle = 0;
         let drumSoundTicks = 0;
 
+        // PRESETS DE PALABRAS
+        const PRESETS = {
+            paises: ["Argentina", "Brasil", "Canada", "Chile", "Colombia", "Espana", "Francia", "Italia", "Japon", "Mexico", "Peru", "Alemania", "Australia", "Egipto", "India", "Portugal", "Rusia", "Suecia", "Suiza", "China", "Belgica", "Grecia", "Holanda", "Noruega", "Turquia", "Bolivia", "Ecuador", "Uruguay", "Paraguay", "Venezuela"],
+            animales: ["Perro", "Gato", "Leon", "Tigre", "Elefante", "Jirafa", "Mono", "Caballo", "Vaca", "Oveja", "Oso", "Lobo", "Zorro", "Aguila", "Delfin", "Tiburon", "Ballena", "Tortuga", "Serpiente", "Rana", "Canguro", "Cebra", "Panda", "Koala", "Conejo", "Raton", "Hipopotamo", "Rinoceronte"],
+            cosas: ["Mesa", "Silla", "Telefono", "Computadora", "Reloj", "Libro", "Lapiz", "Vaso", "Plato", "Llave", "Puerta", "Ventana", "Cama", "Lampara", "Espejo", "Camara", "Bolso", "Zapato", "Pelota", "Guitarra", "Auto", "Bicicleta", "Radio", "Television", "Taza", "Papel", "Cuaderno", "Teclado", "Monitor"]
+        };
+
         // ==========================================
         // MOTOR SINTETIZADOR DE SONIDO ENRIQUECIDO (WEB AUDIO API)
         // ==========================================
@@ -821,9 +828,13 @@
 
         // GESTIÓN DE SUSCRIPCIONES REALTIME SEGURAS
         function safelyUnsubscribeCurrent() {
-            if (gameState.realtimeSubscription) {
-                supabaseClient.removeChannel(gameState.realtimeSubscription);
-                gameState.realtimeSubscription = null;
+            try {
+                if (gameState.realtimeSubscription) {
+                    supabaseClient.removeChannel(gameState.realtimeSubscription);
+                    gameState.realtimeSubscription = null;
+                }
+            } catch (e) {
+                console.error("Fallo al desuscribir canal:", e);
             }
         }
 
@@ -901,15 +912,19 @@
             }
         }
 
-        // INICIALIZACIÓN
+        // INICIALIZACIÓN (Reordenamiento de dependencias para evitar cuelgues)
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. Vincular elementos visuales prioritarios primero
+            drumCanvas = document.getElementById('lobby-drum-canvas');
+            drumCtx = drumCanvas ? drumCanvas.getContext('2d') : null;
+
+            // 2. Prellenar configuraciones estáticas
             toggleConfigFields();
             loadPresetWords();
-            checkUrlInviteParams(); 
-            checkRestoreSessions(); // Recupera sesión activa automáticamente
 
-            drumCanvas = document.getElementById('lobby-drum-canvas');
-            drumCtx = drumCanvas.getContext('2d');
+            // 3. Evaluar e iniciar conexiones seguras de restauración de sesión
+            checkUrlInviteParams(); 
+            checkRestoreSessions(); 
         });
 
         // NAVEGACIÓN ENTRE VISTAS
@@ -919,9 +934,12 @@
                 'view-admin-lobby', 'view-admin-play', 'view-player-join', 'view-player-lobby', 'view-player-play'
             ];
             views.forEach(id => {
-                document.getElementById(id).classList.add('hidden');
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
             });
-            document.getElementById(viewId).classList.remove('hidden');
+            
+            const targetView = document.getElementById(viewId);
+            if (targetView) targetView.classList.remove('hidden');
 
             if (viewId === 'view-player-lobby') {
                 startDrumAnimation();
@@ -955,7 +973,8 @@
             const sala = params.get('sala');
             if (sala) {
                 switchView('view-player-join');
-                document.getElementById('join-room-code').value = sala.toUpperCase();
+                const field = document.getElementById('join-room-code');
+                if (field) field.value = sala.toUpperCase();
                 showToast(`Código de sala "${sala}" cargado.`);
             }
         }
@@ -978,20 +997,28 @@
 
         // MOSTRAR/OCULTAR CAMPOS DE CONFIGURACIÓN
         function toggleConfigFields() {
-            const type = document.getElementById('admin-game-type').value;
+            const typeEl = document.getElementById('admin-game-type');
+            if (!typeEl) return;
+            const type = typeEl.value;
+            const numbersBox = document.getElementById('config-numbers');
+            const wordsBox = document.getElementById('config-words');
             if (type === 'numeros') {
-                document.getElementById('config-numbers').classList.remove('hidden');
-                document.getElementById('config-words').classList.add('hidden');
+                if (numbersBox) numbersBox.classList.remove('hidden');
+                if (wordsBox) wordsBox.classList.add('hidden');
             } else {
-                document.getElementById('config-numbers').classList.add('hidden');
-                document.getElementById('config-words').classList.remove('hidden');
+                if (numbersBox) numbersBox.classList.add('hidden');
+                if (wordsBox) wordsBox.classList.remove('hidden');
             }
         }
 
         // CARGAR PRESETS DE PALABRAS
         function loadPresetWords() {
-            const presetKey = document.getElementById('word-preset').value;
+            const presetEl = document.getElementById('word-preset');
+            if (!presetEl) return;
+            const presetKey = presetEl.value;
             const textarea = document.getElementById('custom-words-list');
+            if (!textarea) return;
+
             if (presetKey !== 'custom' && PRESETS[presetKey]) {
                 textarea.value = PRESETS[presetKey].join(', ');
                 textarea.disabled = true;
@@ -1014,6 +1041,7 @@
         // NOTIFICACIONES TOAST
         function showToast(message) {
             const toast = document.getElementById('toast-notification');
+            if (!toast) return;
             toast.textContent = message;
             toast.classList.remove('hidden');
             setTimeout(() => {
@@ -1370,7 +1398,7 @@
             document.getElementById('lobby-code-display').textContent = roomCode;
             const inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${roomCode}`;
             const qrImg = document.getElementById('lobby-qr-code');
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inviteUrl)}`;
+            if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inviteUrl)}`;
         }
 
         function copyInviteLink() {
@@ -1397,15 +1425,15 @@
             const viewCard = document.getElementById('admin-tab-card-view');
 
             if (tabName === 'board') {
-                tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
-                tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
-                viewBoard.classList.remove('hidden');
-                viewCard.classList.add('hidden');
+                if (tabBoard) tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
+                if (tabCard) tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
+                if (viewBoard) viewBoard.classList.remove('hidden');
+                if (viewCard) viewCard.classList.add('hidden');
             } else {
-                tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
-                tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
-                viewBoard.classList.add('hidden');
-                viewCard.classList.remove('hidden');
+                if (tabBoard) tabBoard.className = "w-1/2 py-1.5 text-center border-b-2 border-transparent text-gray-400";
+                if (tabCard) tabCard.className = "w-1/2 py-1.5 text-center border-b-2 border-blue-600 text-blue-600";
+                if (viewBoard) viewBoard.classList.add('hidden');
+                if (viewCard) viewCard.classList.remove('hidden');
                 
                 if (gameState.adminCardMatrix.length === 0) {
                     generateAdminCard();
@@ -1416,12 +1444,14 @@
         function toggleAdminTabsVisibility() {
             const tabsHeader = document.getElementById('admin-tabs-header');
             if (gameState.adminWantsToPlay) {
-                tabsHeader.classList.remove('hidden');
+                if (tabsHeader) tabsHeader.classList.remove('hidden');
                 switchAdminTab('board'); 
             } else {
-                tabsHeader.classList.add('hidden');
-                document.getElementById('admin-tab-board-view').classList.remove('hidden');
-                document.getElementById('admin-tab-card-view').classList.add('hidden');
+                if (tabsHeader) tabsHeader.classList.add('hidden');
+                const viewBoard = document.getElementById('admin-tab-board-view');
+                const viewCard = document.getElementById('admin-tab-card-view');
+                if (viewBoard) viewBoard.classList.remove('hidden');
+                if (viewCard) viewCard.classList.add('hidden');
             }
         }
 
@@ -1456,6 +1486,7 @@
 
         function buildAdminPlayerCardUI() {
             const grid = document.getElementById('admin-player-grid');
+            if (!grid) return;
             grid.innerHTML = '';
             
             // Adaptar Grid de Administrador
@@ -1574,19 +1605,21 @@
             const countSpan = document.getElementById('player-count');
             
             if (data.length === 0) {
-                listContainer.innerHTML = '<li class="text-gray-500 text-center py-2">Esperando participantes...</li>';
-                countSpan.textContent = '0';
+                if (listContainer) listContainer.innerHTML = '<li class="text-gray-500 text-center py-2">Esperando participantes...</li>';
+                if (countSpan) countSpan.textContent = '0';
                 return;
             }
 
-            countSpan.textContent = data.length;
-            listContainer.innerHTML = '';
-            data.forEach(p => {
-                const li = document.createElement('li');
-                li.className = 'py-2 px-3 border-b border-gray-100 flex justify-between items-center';
-                li.innerHTML = `<span>👤 ${p.nombre}</span> <span class="text-xs text-green-500 font-semibold">Listo</span>`;
-                listContainer.appendChild(li);
-            });
+            if (countSpan) countSpan.textContent = data.length;
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                data.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'py-2 px-3 border-b border-gray-100 flex justify-between items-center';
+                    li.innerHTML = `<span>👤 ${p.nombre}</span> <span class="text-xs text-green-500 font-semibold">Listo</span>`;
+                    listContainer.appendChild(li);
+                });
+            }
         }
 
         function addNewPlayerToList(player) {
@@ -1596,27 +1629,33 @@
         }
 
         async function startGameSession() {
-            const { error } = await supabaseClient
-                .from('bingo_juegos')
-                .update({ estado: 'jugando' })
-                .eq('id', gameState.gameId);
+            try {
+                const { error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .update({ estado: 'jugando' })
+                    .eq('id', gameState.gameId);
 
-            if (error) {
-                showToast('No se pudo iniciar el juego');
-                return;
+                if (error) {
+                    showToast('No se pudo iniciar el juego');
+                    return;
+                }
+
+                safelyUnsubscribeCurrent();
+
+                setupAdminGameBoard();
+                switchView('view-admin-play');
+                listenToWinners();
+                
+                toggleAdminTabsVisibility();
+            } catch (err) {
+                console.error("Fallo al iniciar sesión de juego:", err);
+                showToast("Fallo de red.");
             }
-
-            safelyUnsubscribeCurrent();
-
-            setupAdminGameBoard();
-            switchView('view-admin-play');
-            listenToWinners();
-            
-            toggleAdminTabsVisibility();
         }
 
         function setupAdminGameBoard() {
             const grid = document.getElementById('admin-board-grid');
+            if (!grid) return;
             grid.innerHTML = '';
 
             gameState.allElements.forEach(item => {
@@ -1635,16 +1674,20 @@
             const btnDraw = document.getElementById('btn-draw');
 
             if (isAuto) {
-                intervalInput.disabled = true;
-                countdownContainer.classList.remove('hidden');
-                btnDraw.disabled = true;
-                btnDraw.classList.add('opacity-50');
+                if (intervalInput) intervalInput.disabled = true;
+                if (countdownContainer) countdownContainer.classList.remove('hidden');
+                if (btnDraw) {
+                    btnDraw.disabled = true;
+                    btnDraw.classList.add('opacity-50');
+                }
                 startAutoDraw();
             } else {
-                intervalInput.disabled = false;
-                countdownContainer.classList.add('hidden');
-                btnDraw.disabled = false;
-                btnDraw.classList.remove('opacity-50');
+                if (intervalInput) intervalInput.disabled = false;
+                if (countdownContainer) countdownContainer.classList.add('hidden');
+                if (btnDraw) {
+                    btnDraw.disabled = false;
+                    btnDraw.classList.remove('opacity-50');
+                }
                 stopAutoDraw();
             }
         }
@@ -1670,17 +1713,23 @@
         function stopAutoDraw() {
             clearInterval(autoDrawTimer);
             clearInterval(countdownTimer);
-            document.getElementById('admin-auto-toggle').checked = false;
-            document.getElementById('admin-auto-interval').disabled = false;
-            document.getElementById('admin-countdown-container').classList.add('hidden');
+            const toggle = document.getElementById('admin-auto-toggle');
+            if (toggle) toggle.checked = false;
+            const input = document.getElementById('admin-auto-interval');
+            if (input) input.disabled = false;
+            const container = document.getElementById('admin-countdown-container');
+            if (container) container.classList.add('hidden');
             
             const btnDraw = document.getElementById('btn-draw');
-            btnDraw.disabled = false;
-            btnDraw.classList.remove('opacity-50');
+            if (btnDraw) {
+                btnDraw.disabled = false;
+                btnDraw.classList.remove('opacity-50');
+            }
         }
 
         function updateCountdownUI() {
-            document.getElementById('countdown-display').textContent = secondsLeft;
+            const display = document.getElementById('countdown-display');
+            if (display) display.textContent = secondsLeft;
         }
 
         async function drawNextElement() {
@@ -1698,22 +1747,27 @@
             synth.playCall();
             speakText(`Próximo elemento llamado, ${chosen}`);
 
-            document.getElementById('current-called-display').textContent = chosen;
+            const display = document.getElementById('current-called-display');
+            if (display) display.textContent = chosen;
             const cell = document.getElementById(`admin-cell-${chosen}`);
             if (cell) {
                 cell.classList.remove('bg-gray-50');
                 cell.classList.add('bg-blue-600', 'text-white');
             }
 
-            const { error } = await supabaseClient
-                .from('bingo_juegos')
-                .update({ elementos_llamados: gameState.calledElements })
-                .eq('id', gameState.gameId);
+            try {
+                const { error } = await supabaseClient
+                    .from('bingo_juegos')
+                    .update({ elementos_llamados: gameState.calledElements })
+                    .eq('id', gameState.gameId);
 
-            if (error) {
-                showToast('Error al enviar actualización');
-            } else {
-                updatePlayersProgressList();
+                if (error) {
+                    showToast('Error al enviar actualización');
+                } else {
+                    updatePlayersProgressList();
+                }
+            } catch (err) {
+                console.error("Fallo al actualizar tómbola:", err);
             }
         }
 
@@ -1738,9 +1792,11 @@
                             
                             const btnVerify = document.getElementById('btn-verify-winner');
                             const btnDraw = document.getElementById('btn-draw');
-                            btnVerify.classList.remove('hidden');
-                            btnDraw.classList.remove('w-full');
-                            btnDraw.classList.add('w-2/3');
+                            if (btnVerify) btnVerify.classList.remove('hidden');
+                            if (btnDraw) {
+                                btnDraw.classList.remove('w-full');
+                                btnDraw.classList.add('w-2/3');
+                            }
                             
                             if (!gameState.winnerRegistry.includes(payload.new.id)) {
                                 gameState.winnerRegistry.push(payload.new.id);
@@ -1782,6 +1838,7 @@
                 if (errJ || !jugadores) return;
 
                 const progressContainer = document.getElementById('admin-progress-list');
+                if (!progressContainer) return;
                 progressContainer.innerHTML = '';
 
                 if (jugadores.length === 0) {
@@ -1895,8 +1952,10 @@
                 .then(({ data }) => {
                     const marked = data?.casillas_marcadas || [];
                     
-                    document.getElementById('inspect-title').textContent = `Cartón de ${playerName}`;
+                    const title = document.getElementById('inspect-title');
+                    if (title) title.textContent = `Cartón de ${playerName}`;
                     const grid = document.getElementById('inspect-grid');
+                    if (!grid) return;
                     grid.innerHTML = '';
                     grid.style.gridTemplateColumns = `repeat(${gameState.cols}, minmax(0, 1fr))`;
 
@@ -1932,81 +1991,90 @@
                         grid.appendChild(cell);
                     });
 
-                    document.getElementById('player-inspect-modal').classList.remove('hidden');
+                    const modal = document.getElementById('player-inspect-modal');
+                    if (modal) modal.classList.remove('hidden');
                 });
         }
 
         function closeInspectModal() {
-            document.getElementById('player-inspect-modal').classList.add('hidden');
+            const modal = document.getElementById('player-inspect-modal');
+            if (modal) modal.classList.add('hidden');
         }
 
         async function handleManualVerification() {
-            const { data: jugador } = await supabaseClient
-                .from('bingo_jugadores')
-                .select('*')
-                .eq('juego_id', gameState.gameId)
-                .eq('es_ganador', true)
-                .single();
+            try {
+                const { data: jugador } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .select('*')
+                    .eq('juego_id', gameState.gameId)
+                    .eq('es_ganador', true)
+                    .single();
 
-            if (!jugador) {
-                showToast("No hay reclamos activos.");
-                return;
-            }
+                if (!jugador) {
+                    showToast("No hay reclamos activos.");
+                    return;
+                }
 
-            const { data: carton } = await supabaseClient
-                .from('bingo_cartones')
-                .select('*')
-                .eq('jugador_id', jugador.id)
-                .single();
+                const { data: carton } = await supabaseClient
+                    .from('bingo_cartones')
+                    .select('*')
+                    .eq('jugador_id', jugador.id)
+                    .single();
 
-            const matriz = carton.matriz || [];
-            const totalCells = gameState.rows * gameState.cols;
-            const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
-            const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
-            
-            // DOBLE VALIDACIÓN ESTRICTA: Marcadas AND extraídas por tómbola
-            const marcadas = jugador.casillas_marcadas || [];
-            const aciertosRealesCount = matriz.filter((val, index) => {
-                if (index === centerIndex && hasOddDimension) return false;
-                return marcadas.includes(index) && gameState.calledElements.includes(val);
-            }).length;
+                const matriz = carton.matriz || [];
+                const totalCells = gameState.rows * gameState.cols;
+                const hasOddDimension = (gameState.rows % 2 !== 0) && (gameState.cols % 2 !== 0);
+                const centerIndex = hasOddDimension ? Math.floor(totalCells / 2) : -1;
+                
+                // DOBLE VALIDACIÓN ESTRICTA: Marcadas AND extraídas por tómbola
+                const marcadas = jugador.casillas_marcadas || [];
+                const aciertosRealesCount = matriz.filter((val, index) => {
+                    if (index === centerIndex && hasOddDimension) return false;
+                    return marcadas.includes(index) && gameState.calledElements.includes(val);
+                }).length;
 
-            const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
-            const esBingoLegitimo = (aciertosRealesCount >= targetCellsCount);
+                const targetCellsCount = hasOddDimension ? totalCells - 1 : totalCells;
+                const esBingoLegitimo = (aciertosRealesCount >= targetCellsCount);
 
-            if (esBingoLegitimo) {
-                showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos reales y marcados. ¿Confirmar victoria y finalizar partida?`, async () => {
-                    await supabaseClient
-                        .from('bingo_juegos')
-                        .update({ estado: 'finalizado' })
-                        .eq('id', gameState.gameId);
-                });
-            } else {
-                synth.playBuzzer(); 
-                showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es INCORRECTO (${aciertosRealesCount} de ${targetCellsCount} aciertos reales y marcados). ¿Rechazar y reanudar la partida?`, async () => {
-                    await supabaseClient
-                        .from('bingo_jugadores')
-                        .update({ es_ganador: false })
-                        .eq('id', jugador.id);
+                if (esBingoLegitimo) {
+                    showCustomConfirm("BINGO LEGÍTIMO DETECTADO", `El cartón de ${jugador.nombre} ha sido verificado con ${aciertosRealesCount} aciertos reales y marcados. ¿Confirmar victoria y finalizar partida?`, async () => {
+                        await supabaseClient
+                            .from('bingo_juegos')
+                            .update({ estado: 'finalizado' })
+                            .eq('id', gameState.gameId);
+                    });
+                } else {
+                    synth.playBuzzer(); 
+                    showCustomConfirm("BINGO FALSO DETECTADO ❌", `El cartón de ${jugador.nombre} es INCORRECTO (${aciertosRealesCount} de ${targetCellsCount} aciertos reales y marcados). ¿Rechazar y reanudar la partida?`, async () => {
+                        await supabaseClient
+                            .from('bingo_jugadores')
+                            .update({ es_ganador: false })
+                            .eq('id', jugador.id);
 
-                    // Conservación matemática de la configuración original (Corrección de Bug Crítico)
-                    let updatedConfig = { ...gameState.configuracion, ultimo_tramposo: jugador.nombre, rechazo_time: Date.now() };
-                    
-                    await supabaseClient
-                        .from('bingo_juegos')
-                        .update({ configuracion: updatedConfig })
-                        .eq('id', gameState.gameId);
+                        // Conservación matemática de la configuración original (Corrección de Bug Crítico)
+                        let updatedConfig = { ...gameState.configuracion, ultimo_tramposo: jugador.nombre, rechazo_time: Date.now() };
+                        
+                        await supabaseClient
+                            .from('bingo_juegos')
+                            .update({ configuracion: updatedConfig })
+                            .eq('id', gameState.gameId);
 
-                    // Revertir estados de botones sin romper estilos de variables CSS
-                    const btnVerify = document.getElementById('btn-verify-winner');
-                    const btnDraw = document.getElementById('btn-draw');
-                    btnVerify.classList.add('hidden');
-                    btnDraw.classList.remove('w-2/3');
-                    btnDraw.classList.add('w-full');
-                    
-                    showToast(`Reclamo de ${jugador.nombre} rechazado.`);
-                    updatePlayersProgressList();
-                });
+                        // Revertir estados de botones sin romper estilos de variables CSS
+                        const btnVerify = document.getElementById('btn-verify-winner');
+                        const btnDraw = document.getElementById('btn-draw');
+                        if (btnVerify) btnVerify.classList.add('hidden');
+                        if (btnDraw) {
+                            btnDraw.classList.remove('w-2/3');
+                            btnDraw.classList.add('w-full');
+                        }
+                        
+                        showToast(`Reclamo de ${jugador.nombre} rechazado.`);
+                        updatePlayersProgressList();
+                    });
+                }
+            } catch (err) {
+                console.error("Fallo al verificar cartón:", err);
+                showToast("Fallo al procesar verificación.");
             }
         }
 
@@ -2236,8 +2304,10 @@
                     gameState.role = 'player';
 
                     if (juego.estado === 'esperando') {
-                        document.getElementById('player-lobby-room').textContent = gameState.gameCode;
-                        document.getElementById('player-lobby-name').textContent = gameState.playerName;
+                        const room = document.getElementById('player-lobby-room');
+                        if (room) room.textContent = gameState.gameCode;
+                        const name = document.getElementById('player-lobby-name');
+                        if (name) name.textContent = gameState.playerName;
                         switchView('view-player-lobby');
                     } else if (juego.estado === 'jugando') {
                         startGameForPlayer();
@@ -2320,8 +2390,10 @@
                     winnerText = ganadores.map(g => g.nombre).join(' & ');
                 }
 
-                document.getElementById('winner-announcement').textContent = `🏆 ${winnerText} 🏆`;
-                document.getElementById('celebration-overlay').classList.remove('hidden');
+                const alertText = document.getElementById('winner-announcement');
+                if (alertText) alertText.textContent = `🏆 ${winnerText} 🏆`;
+                const overlay = document.getElementById('celebration-overlay');
+                if (overlay) overlay.classList.remove('hidden');
                 
                 synth.playVictory();
                 triggerHapticVibration([500, 100, 500, 100, 1000]);
@@ -2340,8 +2412,10 @@
         }
 
         function startGameForPlayer() {
-            document.getElementById('player-meta-name').textContent = gameState.playerName;
-            document.getElementById('player-meta-room').textContent = gameState.gameCode;
+            const name = document.getElementById('player-meta-name');
+            if (name) name.textContent = gameState.playerName;
+            const room = document.getElementById('player-meta-room');
+            if (room) room.textContent = gameState.gameCode;
 
             buildPlayerCardUI();
             switchView('view-player-play');
@@ -2349,6 +2423,7 @@
 
         function buildPlayerCardUI() {
             const grid = document.getElementById('player-card-grid');
+            if (!grid) return;
             grid.innerHTML = '';
             
             // Adaptador Responsivo de Grid (Sugerencia de visualización Palabras vs Números)
@@ -2467,9 +2542,10 @@
             gameState.calledElements = calledArray || [];
 
             if (!calledArray || calledArray.length === 0) {
-                document.getElementById('player-called-display').textContent = 'Esperando...';
-                historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Ninguno aún</span>';
-                allCalledContainer.innerHTML = '<span class="text-gray-400 text-[9px] italic">Esperando que inicie el juego...</span>';
+                const calledDisplay = document.getElementById('player-called-display');
+                if (calledDisplay) calledDisplay.textContent = 'Esperando...';
+                if (historyList) historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Ninguno aún</span>';
+                if (allCalledContainer) allCalledContainer.innerHTML = '<span class="text-gray-400 text-[9px] italic">Esperando que inicie el juego...</span>';
                 return;
             }
 
@@ -2479,34 +2555,41 @@
                 gameState.lastProcessedElement = last;
                 
                 const calledBox = document.getElementById('player-called-box');
-                calledBox.classList.remove('animate-apoteosic');
-                void calledBox.offsetWidth; 
-                calledBox.classList.add('animate-apoteosic');
+                if (calledBox) {
+                    calledBox.classList.remove('animate-apoteosic');
+                    void calledBox.offsetWidth; 
+                    calledBox.classList.add('animate-apoteosic');
+                }
             }
 
-            document.getElementById('player-called-display').textContent = last;
+            const calledDisplay = document.getElementById('player-called-display');
+            if (calledDisplay) calledDisplay.textContent = last;
             
-            historyList.innerHTML = '';
-            const history = [...calledArray].reverse().slice(1);
+            if (historyList) {
+                historyList.innerHTML = '';
+                const history = [...calledArray].reverse().slice(1);
 
-            if (history.length === 0) {
-                historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Sin elementos anteriores</span>';
-            } else {
-                history.forEach(item => {
+                if (history.length === 0) {
+                    historyList.innerHTML = '<span class="text-gray-400 text-xs italic">Sin elementos anteriores</span>';
+                } else {
+                    history.forEach(item => {
+                        const badge = document.createElement('span');
+                        badge.className = 'bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap border border-blue-200 shrink-0';
+                        badge.textContent = item;
+                        historyList.appendChild(badge);
+                    });
+                }
+            }
+
+            if (allCalledContainer) {
+                allCalledContainer.innerHTML = '';
+                [...calledArray].forEach(item => {
                     const badge = document.createElement('span');
-                    badge.className = 'bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap border border-blue-200 shrink-0';
+                    badge.className = 'bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded border border-gray-300';
                     badge.textContent = item;
-                    historyList.appendChild(badge);
+                    allCalledContainer.appendChild(badge);
                 });
             }
-
-            allCalledContainer.innerHTML = '';
-            [...calledArray].forEach(item => {
-                const badge = document.createElement('span');
-                badge.className = 'bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded border border-gray-300';
-                badge.textContent = item;
-                allCalledContainer.appendChild(badge);
-            });
 
             const matchedIndex = gameState.cardMatrix.indexOf(last);
             if (matchedIndex !== -1) {
@@ -2522,16 +2605,21 @@
         }
 
         async function claimBingo() {
-            const { error } = await supabaseClient
-                .from('bingo_jugadores')
-                .update({ es_ganador: true })
-                .eq('id', gameState.playerId);
+            try {
+                const { error } = await supabaseClient
+                    .from('bingo_jugadores')
+                    .update({ es_ganador: true })
+                    .eq('id', gameState.playerId);
 
-            if (error) {
-                showToast('Error al cantar Bingo');
-            } else {
-                startCelebration(); 
-                showToast('¡Has reclamado Bingo! Esperando verificación.');
+                if (error) {
+                    showToast('Error al cantar Bingo');
+                } else {
+                    startCelebration(); 
+                    showToast('¡Has reclamado Bingo! Esperando verificación.');
+                }
+            } catch (err) {
+                console.error("Fallo al enviar reclamo:", err);
+                showToast("Fallo al enviar el reclamo.");
             }
         }
 
@@ -2539,6 +2627,7 @@
         // ANIMACIÓN DE BALOTA FLOTANTE (REDISEÑO)
         // ==========================================
         function startDrumAnimation() {
+            if (!drumCanvas) return;
             drumCanvas.width = drumCanvas.offsetWidth;
             drumCanvas.height = drumCanvas.offsetHeight;
             
@@ -2554,6 +2643,7 @@
         }
 
         function animateDrum() {
+            if (!drumCtx) return;
             drumCtx.clearRect(0, 0, drumCanvas.width, drumCanvas.height);
             
             const centerX = drumCanvas.width / 2;
